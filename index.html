@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GymTrack Stats</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- PWA META -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="theme-color" content="#3b82f6">
+
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;background:#f5f5f5;padding:10px;margin:0;}
+.card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.row{display:flex;gap:8px;flex-wrap:wrap;}
+.week-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:4px;margin-top:8px;}
+.week-btn{padding:6px;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;}
+.week-btn.active{background:#3b82f6;color:#fff;}
+.week-btn.inactive{background:#e5e7eb;}
+select,input,textarea,button{padding:6px;border-radius:6px;border:1px solid #ccc;font-size:0.85rem;}
+input[type=number]{width:70px;}
+textarea{resize:none;width:100%;}
+button{cursor:pointer;}
+.session{border-top:1px solid #eee;padding-top:8px;margin-top:8px;}
+.prev{background:#f9fafb;border:1px dashed #bbb;padding:8px;border-radius:6px;flex:1;min-width:90px;}
+.curr{flex:1;min-width:90px;}
+.set{display:flex;gap:4px;margin-bottom:4px;align-items:center;flex-wrap:wrap;}
+.iso{background:#fafafa;padding:6px;border-radius:6px;margin-bottom:6px;}
+.small{font-size:11px;color:#555;}
+.locked{opacity:.6;}
+.hidden{display:none;}
+.stats-week{border-bottom:1px solid #ddd;padding:8px 0;}
+.stats-lift{margin-left:10px;}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="card">
+  <h2>GymTrack Stats</h2>
+  <div class="row" style="align-items:center;gap:6px;margin-bottom:8px;">
+    <button onclick="changeWeek(-1)">◀</button>
+    <strong id="weekTitle">Week 1</strong>
+    <button onclick="changeWeek(1)">▶</button>
+
+    <select id="weekType">
+      <option>GVT</option>
+      <option>Core Session</option>
+      <option>Breakdown Banded</option>
+      <option>Breakdown Pause</option>
+      <option>Breakdown Other</option>
+      <option>Mini-Peak</option>
+      <option>Peak</option>
+    </select>
+
+    <button onclick="toggleStats()">Cycle Stats</button>
+    <button onclick="resetAll()" style="background:#ef4444;color:#fff">Reset</button>
+  </div>
+
+  <div id="weekGrid" class="week-grid"></div>
+</div>
+
+<!-- MAIN LOGGER -->
+<div id="loggerView">
+  <div id="sessions"></div>
+
+  <div class="card">
+    <canvas id="rmChart"></canvas>
+  </div>
+</div>
+
+<!-- STATS VIEW -->
+<div id="statsView" class="hidden">
+  <div class="card">
+    <h3>Cycle Stats (Weeks 1–12)</h3>
+    <div id="statsContent"></div>
+  </div>
+</div>
+
+<script>
+/* ---------------- DATABASE ---------------- */
+let db = JSON.parse(localStorage.getItem('db')) || {
+  lifts:{Squat:[],Bench:[],Deadlift:[]},
+  isolations:{Squat:[],Bench:[],Deadlift:[]},
+  pbs:{Squat:0,Bench:0,Deadlift:0}
+};
+
+const MAX_WEEKS = 12;
+let currentWeek = 1;
+const typeSel = document.getElementById('weekType');
+
+function save(){ localStorage.setItem('db',JSON.stringify(db)); }
+
+/* ---------------- HELPERS ---------------- */
+function calc1RM(w,r){ return r>0 ? Math.round(w*(1+r/30)) : 0; }
+function prevEquivalent(lift,type){
+  const s=db.lifts[lift].filter(x=>x.completed&&x.weekType===type);
+  return s.length ? s[s.length-1] : null;
+}
+function prevIsolation(lift){
+  return db.isolations[lift].find(s=>s.week===currentWeek-1) || null;
+}
+
+/* ---------------- RENDER ---------------- */
+function render(){
+  document.getElementById('weekTitle').textContent=`Week ${currentWeek}`;
+  renderWeekButtons();
+
+  const container=document.getElementById('sessions');
+  container.innerHTML='';
+
+  ['Squat','Bench','Deadlift'].forEach(lift=>{
+    let ses=db.lifts[lift].find(s=>s.week===currentWeek);
+    if(!ses){
+      ses={week:currentWeek,weekType:typeSel.value,sets:[],isolations:[],notes:'',completed:false};
+      db.lifts[lift].push(ses);
+    }
+
+    const setCount=ses.weekType==='GVT'?10:5;
+    ses.sets = Array.from({length:setCount},(_,i)=>({
+      w:ses.sets[i]?.w||'',
+      r:ses.sets[i]?.r||''
+    }));
+
+    const prevMain=prevEquivalent(lift,ses.weekType);
+    const prevIso=prevIsolation(lift);
+
+    for(let i=0;i<3;i++){
+      if(!ses.isolations[i]) ses.isolations[i]={};
+      if(prevIso && Object.keys(ses.isolations[i]).length===0){
+        ses.isolations[i]={...prevIso.isolations[i]};
+      }
+    }
+
+    const card=document.createElement('div');
+    card.className='card session'+(ses.completed?' locked':'');
+    card.innerHTML=`<h3>${lift}</h3>`;
+    const row=document.createElement('div');row.className='row';
+
+    const prev=document.createElement('div');prev.className='prev';
+    prev.innerHTML='<strong>Previous</strong><br>';
+    if(prevMain) prevMain.sets.forEach(s=>prev.innerHTML+=`${s.w}×${s.r}<br>`);
+
+    const curr=document.createElement('div');curr.className='curr';
+    ses.sets.forEach((s,i)=>{
+      curr.innerHTML+=`
+      <div class="set">
+        ${i+1}
+        <input type="number" placeholder="Weight" value="${s.w}" onblur="setMain('${lift}',${i},'w',this.value)">
+        <input type="number" placeholder="Reps" value="${s.r}" onblur="setMain('${lift}',${i},'r',this.value)">
+      </div>`;
+    });
+
+    curr.innerHTML+='<strong>Isolation</strong>';
+    ses.isolations.forEach((iso,i)=>{
+      curr.innerHTML+=`
+      <div class="iso">
+        <input placeholder="Exercise" value="${iso.name||''}" onblur="setIso('${lift}',${i},'name',this.value)">
+        <input placeholder="Sets" type="number" value="${iso.sets||''}" onblur="setIso('${lift}',${i},'sets',this.value)">
+        <input placeholder="Reps" type="number" value="${iso.reps||''}" onblur="setIso('${lift}',${i},'reps',this.value)">
+        <input placeholder="Weight" type="number" value="${iso.weight||''}" onblur="setIso('${lift}',${i},'weight',this.value)">
+      </div>`;
+    });
+
+    curr.innerHTML+=`
+      <textarea placeholder="Notes" maxlength="260" onblur="setNotes('${lift}',this.value)">${ses.notes}</textarea>
+      <button onclick="complete('${lift}')">Complete Session</button>
+    `;
+
+    row.append(prev,curr);
+    card.append(row);
+    container.append(card);
+  });
+
+  drawChart();
+  save();
+}
+
+/* ---------------- STATS VIEW ---------------- */
+function toggleStats(){
+  document.getElementById('loggerView').classList.toggle('hidden');
+  document.getElementById('statsView').classList.toggle('hidden');
+  if(!document.getElementById('statsView').classList.contains('hidden')){
+    renderStats();
+  }
+}
+
+function renderStats(){
+  const c=document.getElementById('statsContent');
+  c.innerHTML='';
+  for(let w=1;w<=MAX_WEEKS;w++){
+    const div=document.createElement('div');
+    div.className='stats-week';
+    div.innerHTML=`<strong>Week ${w}</strong>`;
+    ['Squat','Bench','Deadlift'].forEach(l=>{
+      const s=db.lifts[l].find(x=>x.week===w);
+      if(s){
+        div.innerHTML+=`
+        <div class="stats-lift">
+          <strong>${l}</strong> (${s.weekType})<br>
+          ${s.sets.map(x=>`${x.w}×${x.r}`).join(', ')}<br>
+          ${s.isolations.map(i=>i.name?`${i.name} ${i.sets}×${i.reps}@${i.weight}`:'').join('<br>')}
+        </div>`;
+      }
+    });
+    c.append(div);
+  }
+}
+
+/* ---------------- SETTERS & NAV ---------------- */
+function setMain(l,i,f,v){ db.lifts[l].find(s=>s.week===currentWeek).sets[i][f]=v; save(); }
+function setIso(l,i,f,v){ db.lifts[l].find(s=>s.week===currentWeek).isolations[i][f]=v; save(); }
+function setNotes(l,v){ db.lifts[l].find(s=>s.week===currentWeek).notes=v; save(); }
+function complete(l){ 
+  const ses=db.lifts[l].find(s=>s.week===currentWeek);
+  ses.completed=true; 
+  const isoCopy=JSON.parse(JSON.stringify(ses.isolations));
+  db.isolations[l].push({week:currentWeek,isolations:isoCopy});
+  const maxW = Math.max(...ses.sets.map(s=>Number(s.w)||0));
+  if(maxW>db.pbs[l]) db.pbs[l]=maxW;
+  render(); 
+}
+function changeWeek(d){ currentWeek=Math.max(1,Math.min(MAX_WEEKS,currentWeek+d)); render(); }
+function resetAll(){ if(confirm('Delete all data?')){ localStorage.clear();location.reload(); } }
+function renderWeekButtons(){
+  const g=document.getElementById('weekGrid');g.innerHTML='';
+  for(let i=1;i<=MAX_WEEKS;i++){
+    const b=document.createElement('button');
+    b.textContent=`W${i}`;
+    b.className='week-btn '+(i===currentWeek?'active':'inactive');
+    b.onclick=()=>{currentWeek=i;render();};
+    g.append(b);
+  }
+}
+
+/* ---------------- CHART WITH PB ---------------- */
+let chart;
+function drawChart(){
+  const ctx=document.getElementById('rmChart');
+  if(chart) chart.destroy();
+  chart=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:Array.from({length:MAX_WEEKS},(_,i)=>`W${i+1}`),
+      datasets:['Squat','Bench','Deadlift'].map(l=>{
+        return {
+          label:l,
+          data:Array.from({length:MAX_WEEKS},(_,i)=>{
+            const s=db.lifts[l].find(x=>x.week===i+1);
+            return s?Math.max(...s.sets.map(set=>Number(set.w)||0)):null;
+          }),
+          borderColor:l==='Squat'?'#3b82f6':l==='Bench'?'#ef4444':'#16a34a',
+          fill:false,
+          pointRadius: function(context){
+            const s=db.lifts[l].find(x=>x.week===context.dataIndex+1);
+            if(s && (s.weekType==='Mini-Peak'||s.weekType==='Peak')){
+              const maxW=Math.max(...s.sets.map(set=>Number(set.w)||0));
+              if(maxW>db.pbs[l]) return 9; // gold PB point, 3x normal
+            }
+            return 3;
+          },
+          pointBackgroundColor: function(context){
+            const s=db.lifts[l].find(x=>x.week===context.dataIndex+1);
+            if(s && (s.weekType==='Mini-Peak'||s.weekType==='Peak')){
+              const maxW=Math.max(...s.sets.map(set=>Number(set.w)||0));
+              if(maxW>db.pbs[l]) return '#fde68a'; // gold
+            }
+            return '#fff';
+          }
+        }
+      })
+    },
+    options:{responsive:true,plugins:{legend:{position:'top'}}}
+  });
+}
+
+typeSel.onchange=()=>{ render(); };
+render();
+
+/* ---------------- SERVICE WORKER ---------------- */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js')
+    .then(reg => console.log('Service Worker registered', reg))
+    .catch(err => console.log('Service Worker failed', err));
+}
+</script>
+</body>
+</html>
