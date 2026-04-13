@@ -255,7 +255,7 @@ function addSession(){
     lift: "Squat",
     mainsets: "",
     sets: Array.from({length:5},()=>({w:"",r:""})),
-    isolations: [{},{},{}],
+    isolations: [],
 isolationLift: null,
     notes:"",
     completed:false
@@ -395,7 +395,10 @@ if (isGVT) {
         </div>
       `;
     });
-  
+
+  curr.innerHTML += `
+  <button onclick="addIsolation('${session.id}')">+ Add Exercise</button>
+`;
 
     curr.innerHTML += `
       <textarea ${session.completed?"disabled":""}
@@ -439,6 +442,14 @@ function updateMainSets(id, v){
   if (!s) return;
   s.mainSets = v;
   saveDB();
+}
+  function addIsolation(id){
+  const s = getWeek().find(x => x.id === id);
+  if (!s) return;
+
+  s.isolations.push({name:"", sets:"", reps:"", weight:""});
+  saveDB();
+  render();
 }
 /* ================= HEADER ================= */
 
