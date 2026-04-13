@@ -87,6 +87,12 @@ button[style*="ef4444"]{
   <div id="weekGrid" class="row" style="margin-top:8px"></div>
 </div>
 
+  <div class="row" style="margin-top:8px">
+  <button onclick="setView('main')">Main</button>
+  <button onclick="setView('progress')">Progress</button>
+  <button onclick="setView('history')">History</button>
+</div>
+
 <!-- MAIN -->
 <div id="sessions"></div>
 
@@ -97,6 +103,13 @@ button[style*="ef4444"]{
 const MAX_WEEKS = 12;
 let currentWeek = 1;
 
+let currentView = "main";
+
+function setView(view){
+  currentView = view;
+  render();
+}
+  
 const LIFTS = ["Squat","Bench","Deadlift","Row","Overhead Press","Open"];
 
 let db = JSON.parse(localStorage.getItem("db")) || {};
@@ -218,6 +231,27 @@ function getPB(lift){
     return w > 0 && w === pb;
   });
 }
+
+  function getPBDates(lift){
+  let pbs = [];
+  let max = 0;
+
+  Object.values(db.weeks).forEach((week, wi) => {
+    week.forEach(session => {
+      if (session.lift !== lift || !session.completed) return;
+
+      session.sets.forEach(set => {
+        const w = Number(set.w);
+        if (w > max){
+          max = w;
+          pbs.push({week: wi+1, weight: w});
+        }
+      });
+    });
+  });
+
+  return pbs;
+}
   
 function hydrateSessionFromHistory(session) {
   
@@ -337,40 +371,23 @@ function editSession(id){
 
    // ---- RENDER ----
 
-function render(){
-  document.getElementById("weekTitle").textContent = `Week ${currentWeek}`;
-  renderWeekButtons();
-document.getElementById("cycleNumber").textContent = db.cycle;
-const weekTypeSelect = document.getElementById("weekTypeSelect");
-if (weekTypeSelect) {
-  weekTypeSelect.value = getWeekType();
-  weekTypeSelect.disabled = isWeekLocked();
-}
+function renderMain(c){
+  getWeek().forEach(session => {
+    hydrateSessionFromHistory(session);
 
-  
-  const c = document.getElementById("sessions");
-  c.innerHTML = "";
-getWeek().forEach(session => {
-  hydrateSessionFromHistory(session);
+    const card = document.createElement("div");
 
+    if (isPB(session)) {
+      card.style.border = "2px solid gold";
+    }
 
-  
-  const card = document.createElement("div");
-  if (isPB(session)) {
-  card.style.border = "2px solid gold";
-}
-  
-  card.className = "card" + (session.completed ? " locked" : "");
+    card.className = "card" + (session.completed ? " locked" : "");
 
-  
+    const prev = document.createElement("div");
+    prev.className = "prev";
+    prev.innerHTML = "<strong>Previous</strong><br>";
 
-  
-  
-  const prev = document.createElement("div");
-  prev.className = "prev";
-  prev.innerHTML = "<strong>Previous</strong><br>";
-
-  if (isPB(session)) {
+if (isPB(session)) {
   prev.innerHTML += "🏆 <strong>PB!</strong><br>";
 }
   if (session._prevMain) {
@@ -488,7 +505,117 @@ if (isGVT) {
     c.append(card);
   });
 }
+  
+    function estimate1RM(weight, reps){
+    weight = Number(weight);
+    reps = Number(reps);
+    if (!weight || !reps) return 0;
+    return Math.round(weight * (1 + reps / 30));
+  }
+  
+  function renderProgress(container){
+  const lifts = ["Squat","Bench","Deadlift","Row","Overhead Press"];
 
+  lifts.forEach(lift => {
+    let best1RM = 0;
+    let best5RM = 0;
+
+    Object.values(db.weeks).forEach(week => {
+      week.forEach(session => {
+        if (session.lift !== lift || !session.completed) return;
+
+        session.sets.forEach(set => {
+          const est = estimate1RM(set.w, set.r);
+          if (est > best1RM) best1RM = est;
+
+          if (Number(set.r) === 5 && Number(set.w) > best5RM){
+            best5RM = Number(set.w);
+          }
+        });
+      });
+    });
+
+    const card = document.createElement("div");
+    card.className = "card";
+
+    card.innerHTML = `
+      <strong>${lift}</strong><br>
+      1RM: ${best1RM} kg<br>
+      5RM: ${best5RM} kg
+    `;
+
+    container.append(card);
+  });
+}
+  
+      function renderHistory(container){
+    const lifts = ["Squat","Bench","Deadlift"];
+  
+    lifts.forEach(lift => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 300;
+      canvas.height = 150;
+  
+      const ctx = canvas.getContext("2d");
+  
+      let data = [];
+  
+      // current cycle only for now
+      for (let w = 1; w <= MAX_WEEKS; w++) {
+        const week = db.weeks[w];
+        if (!week) continue;
+  
+        let max = 0;
+  
+        week.forEach(session => {
+          if (session.lift !== lift || !session.completed) return;
+  
+          session.sets.forEach(set => {
+            const weight = Number(set.w);
+            if (weight > max) max = weight;
+          });
+        });
+  
+        if (max > 0) data.push(max);
+      }
+
+    // draw line
+    ctx.beginPath();
+    data.forEach((val, i) => {
+      const x = i * 40;
+      const y = 150 - val;
+
+      if (i === 0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<strong>${lift} Progress</strong>`;
+    card.append(canvas);
+
+    container.append(card);
+  });
+}
+  
+function render(){
+  document.getElementById("weekTitle").textContent = `Week ${currentWeek}`;
+  renderWeekButtons();
+
+  const c = document.getElementById("sessions");
+  c.innerHTML = "";
+
+  if (currentView === "main") {
+    renderMain(c);
+  } else if (currentView === "progress") {
+    renderProgress(c);
+  } else if (currentView === "history") {
+    renderHistory(c);
+  }
+}
+
+  
   
 /* ================= UPDATES ================= */
 
