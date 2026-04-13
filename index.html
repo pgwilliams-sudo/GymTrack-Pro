@@ -102,6 +102,7 @@ const LIFTS = ["Squat","Bench","Deadlift","Row","Overhead Press","Open"];
 let db = JSON.parse(localStorage.getItem("db")) || {
   cycle: 1,
   weeks: {}
+  history: []
 };
 
 function saveDB(){
@@ -180,6 +181,45 @@ delete session._prevIso;
   if (session.completed) return;
   const prevIso = getPreviousIsolationSession(session);
 session._prevIso = prevIso || null;
+
+  function getPB(lift){
+  let max = 0;
+
+  // Check current cycle
+  Object.values(db.weeks).forEach(week => {
+    week.forEach(session => {
+      if (session.lift === lift && session.completed) {
+        session.sets.forEach(set => {
+          const w = Number(set.w);
+          if (w > max) max = w;
+        });
+      }
+    });
+  });
+
+  // Check history
+  db.history.forEach(cycle => {
+    Object.values(cycle.weeks).forEach(week => {
+      week.forEach(session => {
+        if (session.lift === lift && session.completed) {
+          session.sets.forEach(set => {
+            const w = Number(set.w);
+            if (w > max) max = w;
+          });
+        });
+      });
+    });
+  });
+
+  return max;
+}
+  function isPB(session){
+  if (!session.completed) return false;
+
+  const pb = getPB(session.lift);
+
+  return session.sets.some(set => Number(set.w) === pb);
+}
   
   /* ================= MAIN LIFT ================= */
 
@@ -308,7 +348,15 @@ getWeek().forEach(session => {
 
   
   const card = document.createElement("div");
+  if (isPB(session)) {
+  card.style.border = "2px solid gold";
+}
+  if (isPB(session)) {
+  prev.innerHTML += "🏆 <strong>PB!</strong><br>";
+}
   card.className = "card" + (session.completed ? " locked" : "");
+
+  
 
   
   
@@ -579,9 +627,16 @@ function cycleComplete() {
   // 2️⃣ Advance cycle number
   db.cycle++;
 
-  // 3️⃣ Wipe all training data
-  db.weeks = {};
-  db.weekTypes = {};
+// 3️⃣ Archive current cycle
+db.history.push({
+  cycle: db.cycle,
+  weeks: JSON.parse(JSON.stringify(db.weeks)), // deep copy
+  weekTypes: JSON.parse(JSON.stringify(db.weekTypes || {}))
+});
+
+// 4️⃣ Wipe current cycle
+db.weeks = {};
+db.weekTypes = {};
 
   // 4️⃣ Reset UI state
   currentWeek = 1;
