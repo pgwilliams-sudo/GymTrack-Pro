@@ -101,7 +101,7 @@ const LIFTS = ["Squat","Bench","Deadlift","Row","Overhead Press","Open"];
 
 let db = JSON.parse(localStorage.getItem("db")) || {
   cycle: 1,
-  weeks: {}
+  weeks: {},
   history: []
 };
 
@@ -174,15 +174,7 @@ function isWeekLocked(week = currentWeek) {
   return null;
 }
 
-function hydrateSessionFromHistory(session) {
-  
-delete session._prevMain;
-delete session._prevIso;
-  if (session.completed) return;
-  const prevIso = getPreviousIsolationSession(session);
-session._prevIso = prevIso || null;
-
-  function getPB(lift){
+function getPB(lift){
   let max = 0;
 
   // Check current cycle
@@ -220,6 +212,16 @@ session._prevIso = prevIso || null;
 
   return session.sets.some(set => Number(set.w) === pb);
 }
+  
+function hydrateSessionFromHistory(session) {
+  
+delete session._prevMain;
+delete session._prevIso;
+  if (session.completed) return;
+  const prevIso = getPreviousIsolationSession(session);
+session._prevIso = prevIso || null;
+
+  
   
   /* ================= MAIN LIFT ================= */
 
@@ -351,9 +353,7 @@ getWeek().forEach(session => {
   if (isPB(session)) {
   card.style.border = "2px solid gold";
 }
-  if (isPB(session)) {
-  prev.innerHTML += "🏆 <strong>PB!</strong><br>";
-}
+  
   card.className = "card" + (session.completed ? " locked" : "");
 
   
@@ -363,7 +363,9 @@ getWeek().forEach(session => {
   const prev = document.createElement("div");
   prev.className = "prev";
   prev.innerHTML = "<strong>Previous</strong><br>";
-
+if (isPB(session)) {
+  prev.innerHTML += "🏆 <strong>PB!</strong><br>";
+}
   if (session._prevMain) {
   prev.innerHTML += "<em>Main:</em><br>";
 
