@@ -194,7 +194,7 @@ session._prevIso = prevIso || null;
     delete session.isolationLift;
   }
 
-  const hasIsolationData = session.isolations?.some(i => i.name);
+  const hasIsolationData = session.isolations && session.isolations.length > 0;
 
   if (!hasIsolationData) {
     const prevIso = getPreviousIsolationSession(session);
@@ -427,7 +427,7 @@ function updateLift(id, v){
 
   if (s.lift !== v) {
     s.lift = v;
-    s.isolations = [{},{},{}];
+    s.isolations = [];
     delete s.isolationLift;
   }
 
