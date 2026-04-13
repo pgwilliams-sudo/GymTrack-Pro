@@ -255,6 +255,9 @@ function addSession(){
     lift: "Squat",
     mainsets: "",
     sets: Array.from({length:5},()=>({w:"",r:""})),
+    timer: 0,
+timerRunning: false,
+gvtCount: 0,
     isolations: [],
 isolationLift: null,
     notes:"",
@@ -369,6 +372,17 @@ if (isGVT) {
     </div>
   `;
 }
+  if (isGVT) {
+  curr.innerHTML += `
+    <div style="margin-top:8px;padding:6px;background:#fff3cd;border-radius:6px">
+      <strong>GVT Timer</strong><br>
+      Time: ${session.timer || 0}s<br>
+      Sets: ${session.gvtCount || 0} / 10<br>
+      <button onclick="startTimer('${session.id}')">Start</button>
+      <button onclick="resetTimer('${session.id}')">Reset</button>
+    </div>
+  `;
+}
     session.sets.forEach((set,i) => {
       curr.innerHTML += `
         <div class="set">
@@ -448,6 +462,50 @@ function updateMainSets(id, v){
   if (!s) return;
 
   s.isolations.push({name:"", sets:"", reps:"", weight:""});
+  saveDB();
+  render();
+}
+  let interval = null;
+
+function startTimer(id){
+  const s = getWeek().find(x => x.id === id);
+  if (!s || s.timerRunning) return;
+
+  s.timerRunning = true;
+  s.timer = 90;
+
+  interval = setInterval(() => {
+    s.timer--;
+
+    if (s.timer <= 0) {
+      s.gvtCount = (s.gvtCount || 0) + 1;
+
+      if (s.gvtCount >= 10) {
+        clearInterval(interval);
+        s.timerRunning = false;
+        s.timer = 0;
+        saveDB();
+        render();
+        return;
+      }
+
+      s.timer = 90; // reset for next round
+    }
+
+    saveDB();
+    render();
+  }, 1000);
+}
+
+function resetTimer(id){
+  const s = getWeek().find(x => x.id === id);
+  if (!s) return;
+
+  clearInterval(interval);
+  s.timerRunning = false;
+  s.timer = 0;
+  s.gvtCount = 0;
+
   saveDB();
   render();
 }
