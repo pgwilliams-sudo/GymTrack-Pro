@@ -633,32 +633,31 @@ function cycleComplete() {
   // 1️⃣ Export backup
   exportData();
 
-  // 2️⃣ Advance cycle number
+  // 2️⃣ Store completed cycle number
   const completedCycle = db.cycle;
 
-db.history.push({
-  cycle: completedCycle,
-  weeks: JSON.parse(JSON.stringify(db.weeks)),
-  weekTypes: JSON.parse(JSON.stringify(db.weekTypes || {}))
-});
+  // 3️⃣ Archive current cycle
+  db.history.push({
+    cycle: completedCycle,
+    weeks: JSON.parse(JSON.stringify(db.weeks)),
+    weekTypes: JSON.parse(JSON.stringify(db.weekTypes || {}))
+  });
 
-db.cycle++;
-  weeks: JSON.parse(JSON.stringify(db.weeks)), // deep copy
-  weekTypes: JSON.parse(JSON.stringify(db.weekTypes || {}))
-});
+  // 4️⃣ Advance cycle
+  db.cycle++;
 
-// 4️⃣ Wipe current cycle
-db.weeks = {};
-db.weekTypes = {};
+  // 5️⃣ Reset current cycle data
+  db.weeks = {};
+  db.weekTypes = {};
 
-  // 4️⃣ Reset UI state
+  // 6️⃣ Reset UI
   currentWeek = 1;
 
-  // 5️⃣ Save + re-render
+  // 7️⃣ Save + render
   saveDB();
   render();
 
-  alert(`Cycle ${db.cycle - 1} archived. New cycle started.`);
+  alert(`Cycle ${completedCycle} archived. New cycle started.`);
 }
 
 function resetAll(){
