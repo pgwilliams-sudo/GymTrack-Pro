@@ -91,7 +91,7 @@ button[style*="ef4444"]{
 <div id="sessions"></div>
 
 <script>
-  const APP_VERSION = "2.0.0";
+  const APP_VERSION = "3.0.0";
 /* ================= DATA ================= */
 
 const MAX_WEEKS = 12;
@@ -210,7 +210,10 @@ function getPB(lift){
 
   const pb = getPB(session.lift);
 
-  return session.sets.some(set => Number(set.w) === pb);
+  return session.sets.some(set => {
+    const w = Number(set.w);
+    return w > 0 && w === pb;
+  });
 }
   
 function hydrateSessionFromHistory(session) {
@@ -628,11 +631,15 @@ function cycleComplete() {
   exportData();
 
   // 2️⃣ Advance cycle number
-  db.cycle++;
+  const completedCycle = db.cycle;
 
-// 3️⃣ Archive current cycle
 db.history.push({
-  cycle: db.cycle,
+  cycle: completedCycle,
+  weeks: JSON.parse(JSON.stringify(db.weeks)),
+  weekTypes: JSON.parse(JSON.stringify(db.weekTypes || {}))
+});
+
+db.cycle++;
   weeks: JSON.parse(JSON.stringify(db.weeks)), // deep copy
   weekTypes: JSON.parse(JSON.stringify(db.weekTypes || {}))
 });
