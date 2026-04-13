@@ -465,6 +465,24 @@ function updateMainSets(id, v){
   saveDB();
   render();
 }
+  function beep(freq = 800, duration = 150){
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.value = freq;
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+
+  gain.gain.setValueAtTime(1, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration/1000);
+
+  osc.stop(ctx.currentTime + duration/1000);
+}
   let interval = null;
 
 function startTimer(id){
@@ -476,6 +494,17 @@ function startTimer(id){
 
   interval = setInterval(() => {
     s.timer--;
+
+/* 🔔 80 second cue */
+if (s.timer === 80) {
+  beep(600, 100);
+  setTimeout(() => beep(600, 100), 150);
+}
+
+/* 🔊 Countdown 3,2,1 */
+if (s.timer === 3) beep(900, 120);
+if (s.timer === 2) beep(900, 120);
+if (s.timer === 1) beep(1400, 250);
 
     if (s.timer <= 0) {
       s.gvtCount = (s.gvtCount || 0) + 1;
