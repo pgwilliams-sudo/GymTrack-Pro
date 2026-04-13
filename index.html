@@ -99,11 +99,12 @@ let currentWeek = 1;
 
 const LIFTS = ["Squat","Bench","Deadlift","Row","Overhead Press","Open"];
 
-let db = JSON.parse(localStorage.getItem("db")) || {
-  cycle: 1,
-  weeks: {},
-  history: []
-};
+let db = JSON.parse(localStorage.getItem("db")) || {};
+
+db.cycle = db.cycle || 1;
+db.weeks = db.weeks || {};
+db.history = db.history || [];
+db.weekTypes = db.weekTypes || {};
 
 function saveDB(){
   localStorage.setItem("db", JSON.stringify(db));
@@ -177,7 +178,7 @@ function isWeekLocked(week = currentWeek) {
 function getPB(lift){
   let max = 0;
 
-  // Check current cycle
+  // Current cycle
   Object.values(db.weeks).forEach(week => {
     week.forEach(session => {
       if (session.lift === lift && session.completed) {
@@ -189,19 +190,21 @@ function getPB(lift){
     });
   });
 
-  // Check history
-  db.history.forEach(cycle => {
-    Object.values(cycle.weeks).forEach(week => {
-      week.forEach(session => {
-        if (session.lift === lift && session.completed) {
-          session.sets.forEach(set => {
-            const w = Number(set.w);
-            if (w > max) max = w;
-          });
+  // ✅ SAFE history check
+  if (db.history && Array.isArray(db.history)) {
+    db.history.forEach(cycle => {
+      Object.values(cycle.weeks).forEach(week => {
+        week.forEach(session => {
+          if (session.lift === lift && session.completed) {
+            session.sets.forEach(set => {
+              const w = Number(set.w);
+              if (w > max) max = w;
+            });
+          }
         });
       });
     });
-  });
+  }
 
   return max;
 }
