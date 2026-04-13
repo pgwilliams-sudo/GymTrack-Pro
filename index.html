@@ -363,7 +363,8 @@ getWeek().forEach(session => {
   const prev = document.createElement("div");
   prev.className = "prev";
   prev.innerHTML = "<strong>Previous</strong><br>";
-if (isPB(session)) {
+
+  if (isPB(session)) {
   prev.innerHTML += "🏆 <strong>PB!</strong><br>";
 }
   if (session._prevMain) {
@@ -558,7 +559,7 @@ function startTimer(id){
   interval = setInterval(() => {
     s.timer--;
 
-/* 🔔 80 second cue */
+/* 🔔 10 second cue */
 if (s.timer === 10) {
   beep(600, 100);
   setTimeout(() => beep(600, 100), 150);
