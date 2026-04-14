@@ -517,20 +517,32 @@ if (isGVT) {
   const lifts = ["Squat","Bench","Deadlift","Row","Overhead Press"];
 
   lifts.forEach(lift => {
-    let best1RM = 0;
-    let best5RM = 0;
+
+    let bestWeight = 0;   // ✅ actual max weight lifted
+    let best5RM = 0;      // ✅ actual 5 rep max
+    let bestEst1RM = 0;   // 🔵 estimated
 
     Object.values(db.weeks).forEach(week => {
       week.forEach(session => {
         if (session.lift !== lift || !session.completed) return;
 
         session.sets.forEach(set => {
-          const est = estimate1RM(set.w, set.r);
-          if (est > best1RM) best1RM = est;
+          const w = Number(set.w);
+          const r = Number(set.r);
 
-          if (Number(set.r) === 5 && Number(set.w) > best5RM){
-            best5RM = Number(set.w);
+          if (!w || !r) return;
+
+          // ✅ ACTUAL max weight
+          if (w > bestWeight) bestWeight = w;
+
+          // ✅ TRUE 5RM (only count real 5 reps)
+          if (r === 5 && w > best5RM) {
+            best5RM = w;
           }
+
+          // 🔵 ESTIMATED 1RM
+          const est = estimate1RM(w, r);
+          if (est > bestEst1RM) bestEst1RM = est;
         });
       });
     });
@@ -539,9 +551,14 @@ if (isGVT) {
     card.className = "card";
 
     card.innerHTML = `
-      <strong>${lift}</strong><br>
-      1RM: ${best1RM} kg<br>
-      5RM: ${best5RM} kg
+      <strong>${lift}</strong><br><br>
+
+      🟢 <strong>Actual</strong><br>
+      Max Weight: ${bestWeight} kg<br>
+      5RM: ${best5RM} kg<br><br>
+
+      🔵 <strong>Estimated</strong><br>
+      1RM (calc): ${bestEst1RM} kg
     `;
 
     container.append(card);
