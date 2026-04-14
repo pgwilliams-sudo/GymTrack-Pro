@@ -257,7 +257,16 @@ function hydrateSessionFromHistory(session) {
   
 delete session._prevMain;
 delete session._prevIso;
-  if (session.completed) return;
+
+// ✅ ALWAYS calculate previous data (even if completed)
+const prevMain = getPreviousSession(session);
+session._prevMain = prevMain || null;
+
+const prevIso = getPreviousIsolationSession(session);
+session._prevIso = prevIso || null;
+
+// ❌ Only stop auto-populating inputs if completed
+if (session.completed) return;
   const prevIso = getPreviousIsolationSession(session);
 session._prevIso = prevIso || null;
 
