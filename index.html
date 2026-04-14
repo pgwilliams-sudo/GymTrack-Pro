@@ -335,18 +335,23 @@ function addSession(){
   getWeek().unshift({
     id: crypto.randomUUID(),
     lift: "Squat",
-    mainsets: "",
+    mainSets: "",
     sets: Array.from({length:5},()=>({w:"",r:""})),
-    timer: 0,
-timerRunning: false,
-gvtCount: 0,
     isolations: [],
-isolationLift: null,
-    notes:"",
-    completed:false
+    isolationLift: null,
+    notes: "",
+    completed: false,
+    timer: 0,
+    timerRunning: false,
+    gvtCount: 0
   });
-  saveDB();
-  render();
+}
+
+  function normaliseSession(s){
+  s.sets = s.sets || [];
+  s.isolations = s.isolations || [];
+  s.notes = s.notes || "";
+  return s;
 }
 
 function deleteSession(id){
@@ -758,6 +763,9 @@ function render(){
   document.getElementById("weekTitle").textContent = `Week ${currentWeek}`;
   renderWeekButtons();
 
+getWeek().forEach(session => {
+  session = normaliseSession(session);
+  
   const c = document.getElementById("sessions");
   c.innerHTML = "";
 
