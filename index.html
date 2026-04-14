@@ -254,28 +254,19 @@ function getPB(lift){
 }
   
 function hydrateSessionFromHistory(session) {
-  
-delete session._prevMain;
-delete session._prevIso;
 
-// ✅ ALWAYS calculate previous data (even if completed)
-const prevMain = getPreviousSession(session);
-session._prevMain = prevMain || null;
+  delete session._prevMain;
+  delete session._prevIso;
 
-const prevIso = getPreviousIsolationSession(session);
-session._prevIso = prevIso || null;
-
-// ❌ Only stop auto-populating inputs if completed
-if (session.completed) return;
-  const prevIso = getPreviousIsolationSession(session);
-session._prevIso = prevIso || null;
-
-  
-  
-  /* ================= MAIN LIFT ================= */
-
+  // ✅ ALWAYS calculate previous data (even if completed)
   const prevMain = getPreviousSession(session);
+  const prevIso = getPreviousIsolationSession(session);
+
   session._prevMain = prevMain || null;
+  session._prevIso = prevIso || null;
+
+  // ❌ Only stop auto-populating inputs if completed
+  if (session.completed) return;
 
   /* ================= ISOLATIONS ================= */
 
