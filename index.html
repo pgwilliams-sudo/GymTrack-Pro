@@ -343,8 +343,8 @@ function addSession(){
     completed: false,
     timer: 0,
     timerRunning: false,
-    gvtCount: 0
-    date: Date.now()
+    gvtCount: 0,
+    date: new Date().toISOString()
   });
   saveDB();
   render();
@@ -612,8 +612,6 @@ card.innerHTML = `
 
   function getLiftHistory(lift) {
   let entries = [];
-
-    const ts = session.date || Date.now();
 
   // Helper to extract max + date from a week
   function processWeek(week) {
