@@ -524,6 +524,12 @@ if (isGVT) {
     if (!weight || !reps) return 0;
     return Math.round(weight * (1 + reps / 30));
   }
+
+function formatDate(d){
+  if (!d) return "";
+  const date = new Date(d);
+  return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)}`;
+}
   
   function renderProgress(container){
   const lifts = ["Squat","Bench","Deadlift","Row","Overhead Press"];
@@ -531,13 +537,16 @@ if (isGVT) {
   lifts.forEach(lift => {
 
     let bestWeight = 0;
-    let bestWeightWeek = null;
+let bestWeightWeek = null;
+let bestWeightDate = null;
 
-    let best5RM = 0;
-    let best5RMWeek = null;
+let best5RM = 0;
+let best5RMWeek = null;
+let best5RMDate = null;
 
-    let bestEst1RM = 0;
-    let bestEst1RMWeek = null;
+let bestEst1RM = 0;
+let bestEst1RMWeek = null;
+let bestEst1RMDate = null;
 
     let hasData = false;
 
@@ -554,24 +563,24 @@ if (isGVT) {
 
           if (!w || !r) return;
 
-          // 🟢 Actual max weight
           if (w > bestWeight) {
-            bestWeight = w;
-            bestWeightWeek = weekNum;
-          }
+  bestWeight = w;
+  bestWeightWeek = weekNum;
+  bestWeightDate = session.date;
+}
 
-          // 🟢 True 5RM
-          if (r === 5 && w > best5RM) {
-            best5RM = w;
-            best5RMWeek = weekNum;
-          }
+if (r === 5 && w > best5RM) {
+  best5RM = w;
+  best5RMWeek = weekNum;
+  best5RMDate = session.date;
+}
 
-          // 🔵 Estimated 1RM
-          const est = estimate1RM(w, r);
-          if (est > bestEst1RM) {
-            bestEst1RM = est;
-            bestEst1RMWeek = weekNum;
-          }
+const est = estimate1RM(w, r);
+if (est > bestEst1RM) {
+  bestEst1RM = est;
+  bestEst1RMWeek = weekNum;
+  bestEst1RMDate = session.date;
+}  
         });
       });
     });
@@ -588,12 +597,12 @@ card.innerHTML = `
   <strong>${lift}</strong><br><br>
 
   🟢 <strong>Actual</strong><br>
-  ${bestWeight ? `🏆 <strong>Max Weight:</strong> ${bestWeight} kg (W${bestWeightWeek})<br>` : ""}
-  ${has5RM ? `🏆 <strong>5RM:</strong> ${best5RM} kg (W${best5RMWeek})<br>` : "<em>No 5RM yet</em><br>"}
+  ${bestWeight ? `🏆 <strong>Max Weight:</strong> ${bestWeight} kg (W${bestWeightWeek})<br><small>${formatDate(bestWeightDate)}</small><br>` : ""}
+  ${best5RM ? `🏆 <strong>5RM:</strong> ${best5RM} kg (W${best5RMWeek})<br><small>${formatDate(best5RMDate)}</small><br>` : "<em>No 5RM yet</em><br>"}
   <br>
 
   🔵 <strong>Estimated</strong><br>
-  ${bestEst1RM ? `<strong>1RM:</strong> ${bestEst1RM} kg (W${bestEst1RMWeek})` : "<em>No data</em>"}
+  ${bestEst1RM ? `<strong>1RM:</strong> ${bestEst1RM} kg (W${bestEst1RMWeek})<br><small>${formatDate(bestEst1RMDate)}</small>` : "<em>No data</em>"}
 `;
 
     container.append(card);
@@ -623,7 +632,7 @@ card.innerHTML = `
     if (max > 0) {
       entries.push({
         weight: max,
-        date: sessionDate || null
+        date: sessionDate || new Date().toISOString()
       });
     }
   }
@@ -749,19 +758,20 @@ data.forEach((point, i) => {
   ctx.fill();
 });
 
-    // ---- Labels (light touch) ----
+    // ---- Labels ----
     ctx.fillStyle = "#666";
 ctx.font = "10px Arial";
 
 data.forEach((point, i) => {
+  // Show fewer labels (avoid clutter)
+  if (i % 2 !== 0) return;
+
   const x = padding + (i / (data.length - 1)) * graphWidth;
 
-  if (!point.date) return;
-if (i % 2 !== 0) return;
   const d = new Date(point.date);
   const label = `${d.getDate()}/${d.getMonth()+1}`;
 
-  ctx.fillText(label, x - 10, canvas.height - 5);
+  ctx.fillText(label, x - 12, canvas.height - 5);
 });
 
     // ---- Title ----
