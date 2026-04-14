@@ -763,9 +763,9 @@ function render(){
   document.getElementById("weekTitle").textContent = `Week ${currentWeek}`;
   renderWeekButtons();
 
-getWeek().forEach(session => {
-  session = normaliseSession(session);
-  
+  // ✅ Normalise ALL sessions first
+  getWeek().forEach(s => normaliseSession(s));
+
   const c = document.getElementById("sessions");
   c.innerHTML = "";
 
