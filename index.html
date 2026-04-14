@@ -365,6 +365,11 @@ function deleteSession(id){
 function completeSession(id){
   const s = getWeek().find(x=>x.id===id);
   s.completed = true;
+
+  if (!s.date) {
+    s.date = new Date().toISOString();
+  }
+
   saveDB();
   render();
 }
@@ -598,53 +603,54 @@ card.innerHTML = `
   function getLiftHistory(lift) {
   let entries = [];
 
-  // 1️⃣ Past cycles
-  if (db.history) {
-    db.history.forEach(cycle => {
-      Object.entries(cycle.weeks).forEach(([weekNum, week]) => {
-        let max = 0;
-
-        week.forEach(session => {
-          if (session.lift !== lift || !session.completed) return;
-
-          session.sets.forEach(set => {
-            const w = Number(set.w);
-            if (w > max) max = w;
-          });
-        });
-
-        if (max > 0) {
-          entries.push({
-            weight: max,
-            time: entries.length // simple timeline index
-          });
-        }
-      });
-    });
-  }
-
-  // 2️⃣ Current cycle
-  Object.entries(db.weeks).forEach(([weekNum, week]) => {
+  // Helper to extract max + date from a week
+  function processWeek(week) {
     let max = 0;
+    let sessionDate = null;
 
     week.forEach(session => {
       if (session.lift !== lift || !session.completed) return;
 
       session.sets.forEach(set => {
         const w = Number(set.w);
-        if (w > max) max = w;
+        if (w > max) {
+          max = w;
+          sessionDate = session.date || sessionDate;
+        }
       });
     });
 
     if (max > 0) {
       entries.push({
         weight: max,
-        time: entries.length
+        date: sessionDate || null
       });
     }
+  }
+
+  // 1️⃣ Past cycles
+  if (db.history && Array.isArray(db.history)) {
+    db.history.forEach(cycle => {
+      Object.values(cycle.weeks || {}).forEach(week => {
+        processWeek(week);
+      });
+    });
+  }
+
+  // 2️⃣ Current cycle
+  Object.values(db.weeks || {}).forEach(week => {
+    processWeek(week);
   });
 
-  // 3️⃣ Keep last ~24 entries (~6 months)
+  // 3️⃣ Sort by date (important for graph order)
+  entries.sort((a, b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return -1;
+    if (!b.date) return 1;
+    return new Date(a.date) - new Date(b.date);
+  });
+
+  // 4️⃣ Keep last ~24 entries (~6 months)
   return entries.slice(-24);
 }
 
@@ -745,10 +751,18 @@ data.forEach((point, i) => {
 
     // ---- Labels (light touch) ----
     ctx.fillStyle = "#666";
-    ctx.font = "10px Arial";
+ctx.font = "10px Arial";
 
-    ctx.fillText(`${minW}kg`, 2, canvas.height - padding);
-    ctx.fillText(`${maxW}kg`, 2, padding);
+data.forEach((point, i) => {
+  const x = padding + (i / (data.length - 1)) * graphWidth;
+
+  if (!point.date) return;
+if (i % 2 !== 0) return;
+  const d = new Date(point.date);
+  const label = `${d.getDate()}/${d.getMonth()+1}`;
+
+  ctx.fillText(label, x - 10, canvas.height - 5);
+});
 
     // ---- Title ----
     const card = document.createElement("div");
