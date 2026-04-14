@@ -526,10 +526,10 @@ if (isGVT) {
     return Math.round(weight * (1 + reps / 30));
   }
 
-function formatDate(d){
-  if (!d) return "";
-  const date = new Date(d);
-  return `${date.getDate()}/${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)}`;
+function formatDate(ts){
+  if (!ts) return "";
+  const d = new Date(ts);
+  return `${d.getDate()}/${d.getMonth()+1}`;
 }
   
   function renderProgress(container){
@@ -612,6 +612,8 @@ card.innerHTML = `
 
   function getLiftHistory(lift) {
   let entries = [];
+
+    const ts = session.date || Date.now();
 
   // Helper to extract max + date from a week
   function processWeek(week) {
