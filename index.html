@@ -649,7 +649,7 @@ card.innerHTML = `
     ctx.beginPath();
 
     data.forEach((point, i) => {
-      const x = padding + (i / (data.length - 1 || 1)) * graphWidth;
+      const x = padding + ((point.week - 1) / (MAX_WEEKS - 1)) * graphWidth;
       const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
 
       if (i === 0) ctx.moveTo(x, y);
@@ -661,17 +661,15 @@ card.innerHTML = `
     // ---- Points + PB markers ----
 let runningMax = 0;
 
-data.forEach((point, i) => {
-  const x = padding + (i / (data.length - 1 || 1)) * graphWidth;
+data.forEach(point => {
+  const x = padding + ((point.week - 1) / (MAX_WEEKS - 1)) * graphWidth;
   const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
 
   const isPB = point.weight > runningMax;
-
   if (isPB) runningMax = point.weight;
 
-  // 🥇 PB = gold, otherwise blue
+  // point
   ctx.fillStyle = isPB ? "gold" : "#3b82f6";
-
   ctx.beginPath();
   ctx.arc(x, y, isPB ? 5 : 3, 0, Math.PI * 2);
   ctx.fill();
@@ -680,9 +678,7 @@ data.forEach((point, i) => {
   ctx.fillStyle = "#000";
   ctx.font = "10px Arial";
   ctx.fillText(point.weight, x - 10, y - 8);
-}
 });
-
 
     // ---- Title ----
     const card = document.createElement("div");
