@@ -570,16 +570,19 @@ if (isGVT) {
     const card = document.createElement("div");
     card.className = "card";
 
-    card.innerHTML = `
-      <strong>${lift}</strong><br><br>
+    const has5RM = best5RM > 0;
 
-      🟢 <strong>Actual</strong><br>
-      🏆 Max Weight: ${bestWeight} kg ${bestWeightWeek ? `(W${bestWeightWeek})` : ""}<br>
-      🏆 5RM: ${best5RM || "-"} ${best5RMWeek ? `kg (W${best5RMWeek})` : ""}<br><br>
+card.innerHTML = `
+  <strong>${lift}</strong><br><br>
 
-      🔵 <strong>Estimated</strong><br>
-      🏆 1RM: ${bestEst1RM} kg ${bestEst1RMWeek ? `(W${bestEst1RMWeek})` : ""}
-    `;
+  🟢 <strong>Actual</strong><br>
+  ${bestWeight ? `🏆 <strong>Max Weight:</strong> ${bestWeight} kg (W${bestWeightWeek})<br>` : ""}
+  ${has5RM ? `🏆 <strong>5RM:</strong> ${best5RM} kg (W${best5RMWeek})<br>` : "<em>No 5RM yet</em><br>"}
+  <br>
+
+  🔵 <strong>Estimated</strong><br>
+  ${bestEst1RM ? `<strong>1RM:</strong> ${bestEst1RM} kg (W${bestEst1RMWeek})` : "<em>No data</em>"}
+`;
 
     container.append(card);
   });
@@ -655,22 +658,35 @@ if (isGVT) {
 
     ctx.stroke();
 
-    // ---- Points + labels ----
-    ctx.fillStyle = "#3b82f6";
+    // ---- Points + PB markers ----
+let runningMax = 0;
 
-    data.forEach((point, i) => {
-      const x = padding + (i / (data.length - 1 || 1)) * graphWidth;
-      const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
+data.forEach((point, i) => {
+  const x = padding + (i / (data.length - 1 || 1)) * graphWidth;
+  const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
 
-      // point
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fill();
+  const isPB = point.weight > runningMax;
 
-      // label
-      ctx.font = "10px Arial";
-      ctx.fillText(point.weight, x - 10, y - 8);
-    });
+  if (isPB) runningMax = point.weight;
+
+  // 🥇 PB = gold, otherwise blue
+  ctx.fillStyle = isPB ? "gold" : "#3b82f6";
+
+  ctx.beginPath();
+  ctx.arc(x, y, isPB ? 5 : 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // weight label
+  ctx.fillStyle = "#000";
+  ctx.font = "10px Arial";
+  ctx.fillText(point.weight, x - 10, y - 8);
+
+  // PB label
+  if (isPB) {
+    ctx.fillStyle = "gold";
+    ctx.fillText("PB", x - 8, y - 18);
+  }
+});
 
     // ---- Title ----
     const card = document.createElement("div");
