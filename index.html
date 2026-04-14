@@ -345,6 +345,8 @@ function addSession(){
     timerRunning: false,
     gvtCount: 0
   });
+  saveDB();
+  render();
 }
 
   function normaliseSession(s){
