@@ -518,13 +518,23 @@ if (isGVT) {
 
   lifts.forEach(lift => {
 
-    let bestWeight = 0;   // ✅ actual max weight lifted
-    let best5RM = 0;      // ✅ actual 5 rep max
-    let bestEst1RM = 0;   // 🔵 estimated
+    let bestWeight = 0;
+    let bestWeightWeek = null;
 
-    Object.values(db.weeks).forEach(week => {
+    let best5RM = 0;
+    let best5RMWeek = null;
+
+    let bestEst1RM = 0;
+    let bestEst1RMWeek = null;
+
+    let hasData = false;
+
+    // Loop through weeks
+    Object.entries(db.weeks).forEach(([weekNum, week]) => {
       week.forEach(session => {
         if (session.lift !== lift || !session.completed) return;
+
+        hasData = true;
 
         session.sets.forEach(set => {
           const w = Number(set.w);
@@ -532,20 +542,30 @@ if (isGVT) {
 
           if (!w || !r) return;
 
-          // ✅ ACTUAL max weight
-          if (w > bestWeight) bestWeight = w;
-
-          // ✅ TRUE 5RM (only count real 5 reps)
-          if (r === 5 && w > best5RM) {
-            best5RM = w;
+          // 🟢 Actual max weight
+          if (w > bestWeight) {
+            bestWeight = w;
+            bestWeightWeek = weekNum;
           }
 
-          // 🔵 ESTIMATED 1RM
+          // 🟢 True 5RM
+          if (r === 5 && w > best5RM) {
+            best5RM = w;
+            best5RMWeek = weekNum;
+          }
+
+          // 🔵 Estimated 1RM
           const est = estimate1RM(w, r);
-          if (est > bestEst1RM) bestEst1RM = est;
+          if (est > bestEst1RM) {
+            bestEst1RM = est;
+            bestEst1RMWeek = weekNum;
+          }
         });
       });
     });
+
+    // 🚫 Skip lifts never trained
+    if (!hasData) return;
 
     const card = document.createElement("div");
     card.className = "card";
@@ -554,11 +574,11 @@ if (isGVT) {
       <strong>${lift}</strong><br><br>
 
       🟢 <strong>Actual</strong><br>
-      Max Weight: ${bestWeight} kg<br>
-      5RM: ${best5RM} kg<br><br>
+      🏆 Max Weight: ${bestWeight} kg ${bestWeightWeek ? `(W${bestWeightWeek})` : ""}<br>
+      🏆 5RM: ${best5RM || "-"} ${best5RMWeek ? `kg (W${best5RMWeek})` : ""}<br><br>
 
       🔵 <strong>Estimated</strong><br>
-      1RM (calc): ${bestEst1RM} kg
+      🏆 1RM: ${bestEst1RM} kg ${bestEst1RMWeek ? `(W${bestEst1RMWeek})` : ""}
     `;
 
     container.append(card);
