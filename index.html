@@ -549,47 +549,93 @@ if (isGVT) {
 }
   
       function renderHistory(container){
-    const lifts = ["Squat","Bench","Deadlift"];
-  
-    lifts.forEach(lift => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 300;
-      canvas.height = 150;
-  
-      const ctx = canvas.getContext("2d");
-  
-      let data = [];
-  
-      // current cycle only for now
-      for (let w = 1; w <= MAX_WEEKS; w++) {
-        const week = db.weeks[w];
-        if (!week) continue;
-  
-        let max = 0;
-  
-        week.forEach(session => {
-          if (session.lift !== lift || !session.completed) return;
-  
-          session.sets.forEach(set => {
-            const weight = Number(set.w);
-            if (weight > max) max = weight;
-          });
+  const lifts = ["Squat","Bench","Deadlift"];
+
+  lifts.forEach(lift => {
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 180;
+
+    const ctx = canvas.getContext("2d");
+
+    let data = [];
+
+    // Build weekly max data
+    for (let w = 1; w <= MAX_WEEKS; w++) {
+      const week = db.weeks[w];
+      if (!week) continue;
+
+      let max = 0;
+
+      week.forEach(session => {
+        if (session.lift !== lift || !session.completed) return;
+
+        session.sets.forEach(set => {
+          const weight = Number(set.w);
+          if (weight > max) max = weight;
         });
-  
-        if (max > 0) data.push(max);
-      }
+      });
 
-    // draw line
+      if (max > 0) data.push({week: w, weight: max});
+    }
+
+    if (data.length === 0) return;
+
+    // ---- Scaling ----
+    const weights = data.map(d => d.weight);
+    const maxW = Math.max(...weights);
+    const minW = Math.min(...weights);
+
+    const padding = 20;
+    const graphHeight = canvas.height - padding * 2;
+    const graphWidth = canvas.width - padding * 2;
+
+    const range = maxW - minW || 1;
+
+    // ---- Clear ----
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ---- Axes ----
+    ctx.strokeStyle = "#ccc";
     ctx.beginPath();
-    data.forEach((val, i) => {
-      const x = i * 40;
-      const y = 150 - val;
-
-      if (i === 0) ctx.moveTo(x,y);
-      else ctx.lineTo(x,y);
-    });
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, canvas.height - padding);
+    ctx.lineTo(canvas.width - padding, canvas.height - padding);
     ctx.stroke();
 
+    // ---- Line ----
+    ctx.strokeStyle = "#3b82f6";
+    ctx.beginPath();
+
+    data.forEach((point, i) => {
+      const x = padding + (i / (data.length - 1 || 1)) * graphWidth;
+      const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
+
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+
+    ctx.stroke();
+
+    // ---- Points + labels ----
+    ctx.fillStyle = "#3b82f6";
+
+    data.forEach((point, i) => {
+      const x = padding + (i / (data.length - 1 || 1)) * graphWidth;
+      const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
+
+      // point
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // label
+      ctx.font = "10px Arial";
+      ctx.fillText(point.weight, x - 10, y - 8);
+    });
+
+    // ---- Title ----
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `<strong>${lift} Progress</strong>`;
