@@ -728,21 +728,20 @@ function renderHistory(container){
     ctx.stroke();
 
     // ---- Points + PBs ----
-    let runningMax = 0;
+    const overallMax = Math.max(...data.map(d => d.weight));
 
-    data.forEach((point, i) => {
-      const x = padding + (i / (data.length - 1)) * graphWidth;
-      const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
+data.forEach((point, i) => {
+  const x = padding + (i / (data.length - 1)) * graphWidth;
+  const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
 
-      const isPB = point.weight > runningMax;
-      if (isPB) runningMax = point.weight;
+  const isCurrentPB = point.weight === overallMax;
 
-      ctx.fillStyle = isPB ? "gold" : "#3b82f6";
+  ctx.fillStyle = isCurrentPB ? "gold" : "#3b82f6";
 
-      ctx.beginPath();
-      ctx.arc(x, y, isPB ? 5 : 3, 0, Math.PI * 2);
-      ctx.fill();
-    });
+  ctx.beginPath();
+  ctx.arc(x, y, isCurrentPB ? 5 : 3, 0, Math.PI * 2);
+  ctx.fill();
+});
 
     // ---- Labels (light touch) ----
     ctx.fillStyle = "#666";
