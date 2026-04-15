@@ -66,14 +66,6 @@ button[style*="ef4444"]{
     <strong id="weekTitle">Week 1</strong>
     <button onclick="changeWeek(1)">▶</button>
 
-    <select id="weekTypeSelect" onchange="setWeekType(this.value)">
-  <option value="GVT">GVT</option>
-  <option value="Core">Core</option>
-  <option value="Pause">Pause</option>
-  <option value="Tempo">Tempo</option>
-  <option value="Other">Other</option>
-</select>
-
     <button onclick="addSession()">Add Session</button>
     <button onclick="cycleComplete()">Cycle Complete</button>
 
@@ -117,18 +109,12 @@ let db = JSON.parse(localStorage.getItem("db")) || {};
 db.cycle = db.cycle || 1;
 db.weeks = db.weeks || {};
 db.history = db.history || [];
-db.weekTypes = db.weekTypes || {};
 
 function saveDB(){
   localStorage.setItem("db", JSON.stringify(db));
 }
 const WEEK_TYPES = ["GVT","Core","Pause","Tempo","Other"];
 
-function getWeekType(week = currentWeek) {
-  if (!db.weekTypes) db.weekTypes = {};
-  if (!db.weekTypes[week]) db.weekTypes[week] = "Core";
-  return db.weekTypes[week];
-}
 /* ================= HELPERS ================= */
 
 function getWeek(){
@@ -136,22 +122,8 @@ function getWeek(){
   return db.weeks[currentWeek];
 }
 
-function isWeekLocked(week = currentWeek) {
-  const sessions = db.weeks[week];
-  if (!sessions) return false;
-  return sessions.some(s => s.completed);
-}
-
-  function setWeekType(type, week = currentWeek) {
-  if (!db.weekTypes) db.weekTypes = {};
-  if (isWeekLocked(week)) return; // hard lock
-  db.weekTypes[week] = type;
-  saveDB();
-  render();
-}
-
   function getPreviousSession(currentSession) {
-  const currentWeekType = getWeekType();
+  const currentType = currentSession.type;
 
   // 1️⃣ Same week, earlier sessions
   const weekSessions = getWeek();
@@ -161,16 +133,15 @@ function isWeekLocked(week = currentWeek) {
     const s = weekSessions[i];
     if (
       s.completed &&
-      s.lift === currentSession.lift
+      s.lift === currentSession.lift &&
+      s.type === currentType
     ) {
       return s;
     }
   }
 
-  // 2️⃣ Previous weeks (same week type only)
+  // 2️⃣ Previous weeks (MATCH TYPE ✅)
   for (let w = currentWeek - 1; w >= 1; w--) {
-    if (getWeekType(w) !== currentWeekType) continue;
-
     const sessions = db.weeks[w];
     if (!sessions) continue;
 
@@ -178,7 +149,8 @@ function isWeekLocked(week = currentWeek) {
       const s = sessions[i];
       if (
         s.completed &&
-        s.lift === currentSession.lift
+        s.lift === currentSession.lift &&
+        s.type === currentType
       ) {
         return s;
       }
@@ -335,6 +307,7 @@ function addSession(){
   getWeek().unshift({
     id: crypto.randomUUID(),
     lift: "Squat",
+    type: "Core", // ✅ NEW
     mainSets: "",
     sets: Array.from({length:5},()=>({w:"",r:""})),
     isolations: [],
@@ -344,7 +317,7 @@ function addSession(){
     timer: 0,
     timerRunning: false,
     gvtCount: 0,
-    date: new Date().toISOString().split("T")[0] // ✅ clean YYYY-MM-DD
+    date: new Date().toISOString().split("T")[0]
   });
   saveDB();
   render();
@@ -358,10 +331,23 @@ function addSession(){
   if (!s.date) {
     s.date = new Date().toISOString().split("T")[0];
   }
-
+if (!s.type) {
+  s.type = "Core";
+}
   return s;
 }
 
+  function updateType(id, value){
+  const s = getWeek().find(x => x.id === id);
+  if (!s) return;
+
+  if (s.completed) return; // 🔒 lock if done
+
+  s.type = value;
+  saveDB();
+  render();
+}
+  
 function deleteSession(id){
   db.weeks[currentWeek] = getWeek().filter(s=>s.id!==id);
   saveDB();
@@ -411,7 +397,7 @@ if (isPB(session)) {
   if (session._prevMain) {
   prev.innerHTML += "<em>Main:</em><br>";
 
-  const isGVT = getWeekType() === "GVT";
+  const isGVT = session.type === "GVT";
 
   if (isGVT && session._prevMain.mainSets) {
     const firstSet = session._prevMain.sets.find(s => s.w || s.r);
@@ -445,13 +431,6 @@ if (isPB(session)) {
     const curr = document.createElement("div");
     curr.className = "curr";
 
-    curr.innerHTML += `
-      <select ${session.completed ? "disabled" : ""}
-        onchange="updateLift('${session.id}',this.value)">
-        ${LIFTS.map(l => `<option ${l===session.lift?"selected":""}>${l}</option>`).join("")}
-      </select>
-    `;
-
 curr.innerHTML += `
   <div style="margin-bottom:6px">
     <input type="date"
@@ -461,7 +440,28 @@ curr.innerHTML += `
   </div>
 `;
     
-const isGVT = getWeekType() === "GVT";
+    curr.innerHTML += `
+      <select ${session.completed ? "disabled" : ""}
+        onchange="updateLift('${session.id}',this.value)">
+        ${LIFTS.map(l => `<option ${l===session.lift?"selected":""}>${l}</option>`).join("")}
+      </select>
+    `;
+
+curr.innerHTML += `
+  <div style="margin-bottom:6px">
+    <select
+      ${session.completed ? "disabled" : ""}
+      onchange="updateType('${session.id}', this.value)">
+      ${WEEK_TYPES.map(t => `
+        <option value="${t}" ${t === session.type ? "selected" : ""}>
+          ${t}
+        </option>
+      `).join("")}
+    </select>
+  </div>
+`;
+    
+const isGVT = session.type === "GVT";
 
 if (isGVT) {
   curr.innerHTML += `
