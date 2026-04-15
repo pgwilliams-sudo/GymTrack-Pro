@@ -675,11 +675,11 @@ function renderHistory(container){
 
     const canvas = document.createElement("canvas");
     canvas.width = 320;
-    canvas.height = 180;
+    canvas.height = 200;
 
     const ctx = canvas.getContext("2d");
 
-    const padding = 25;
+    const padding = 30;
     const graphHeight = canvas.height - padding * 2;
     const graphWidth = canvas.width - padding * 2;
 
@@ -688,94 +688,121 @@ function renderHistory(container){
     const minW = Math.min(...weights);
     const range = maxW - minW || 1;
 
-    // ---- Clear ----
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let progress = 0;
 
-    // ---- Axes ----
-    ctx.strokeStyle = "#ddd";
-    ctx.beginPath();
-    ctx.moveTo(padding, padding);
-    ctx.lineTo(padding, canvas.height - padding);
-    ctx.lineTo(canvas.width - padding, canvas.height - padding);
-    ctx.stroke();
+    function draw(){
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ---- Main line ----
-    ctx.strokeStyle = "#3b82f6";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
+      // ---- Axes ----
+      ctx.strokeStyle = "#ddd";
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, canvas.height - padding);
+      ctx.lineTo(canvas.width - padding, canvas.height - padding);
+      ctx.stroke();
 
-    data.forEach((point, i) => {
-      const x = padding + (i / (data.length - 1)) * graphWidth;
-      const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
+      // ---- Smooth Main Line ----
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
 
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
+      const visiblePoints = Math.floor(data.length * progress);
 
-    ctx.stroke();
+      for (let i = 0; i < visiblePoints; i++) {
+        const x = padding + (data.length === 1 ? 0.5 : i / (data.length - 1)) * graphWidth;
+        const y = canvas.height - padding - ((data[i].weight - minW) / range) * graphHeight;
 
-    // ---- Trend line (moving average) ----
-    ctx.strokeStyle = "#999";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          const prevX = padding + ((i - 1) / (data.length - 1)) * graphWidth;
+          const prevY = canvas.height - padding - ((data[i - 1].weight - minW) / range) * graphHeight;
 
-    const windowSize = 3;
+          const midX = (prevX + x) / 2;
+          const midY = (prevY + y) / 2;
 
-    data.forEach((_, i) => {
-      let sum = 0;
-      let count = 0;
-
-      for (let j = i - 1; j <= i + 1; j++) {
-        if (data[j]) {
-          sum += data[j].weight;
-          count++;
+          ctx.quadraticCurveTo(prevX, prevY, midX, midY);
         }
       }
 
-      const avg = sum / count;
+      ctx.stroke();
 
-      const x = padding + (i / (data.length - 1)) * graphWidth;
-      const y = canvas.height - padding - ((avg - minW) / range) * graphHeight;
+      // ---- Points ----
+      const overallMax = Math.max(...weights);
+      const lastIndex = data.length - 1;
 
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      for (let i = 0; i < visiblePoints; i++) {
+        const point = data[i];
+
+        const x = padding + (data.length === 1 ? 0.5 : i / (data.length - 1)) * graphWidth;
+        const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
+
+        const isPB = point.weight === overallMax;
+        const isLatest = i === lastIndex;
+
+        if (isPB) ctx.fillStyle = "gold";
+        else if (isLatest) ctx.fillStyle = "#1e40af";
+        else ctx.fillStyle = "#3b82f6";
+
+        ctx.beginPath();
+        ctx.arc(x, y, isLatest ? 5 : 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // ---- Dates (x-axis) ----
+      ctx.fillStyle = "#666";
+      ctx.font = "10px Arial";
+
+      data.forEach((point, i) => {
+        if (i % 2 !== 0) return;
+
+        const x = padding + (data.length === 1 ? 0.5 : i / (data.length - 1)) * graphWidth;
+        const d = new Date(point.date);
+        const label = `${d.getDate()}/${d.getMonth()+1}`;
+
+        ctx.fillText(label, x - 12, canvas.height - 5);
+      });
+    }
+
+    // ---- Animate ----
+    function animate(){
+      progress += 0.05;
+      if (progress > 1) progress = 1;
+
+      draw();
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    }
+
+    animate();
+
+    // ---- Tap interaction ----
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+
+      let closestIndex = 0;
+      let closestDist = Infinity;
+
+      data.forEach((_, i) => {
+        const x = padding + (data.length === 1 ? 0.5 : i / (data.length - 1)) * graphWidth;
+        const dist = Math.abs(clickX - x);
+
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestIndex = i;
+        }
+      });
+
+      const point = data[closestIndex];
+      const d = new Date(point.date);
+
+      alert(`${lift}\n${point.weight} kg\n${d.toDateString()}`);
     });
 
-    ctx.stroke();
-
-    // ---- Points + PBs ----
-    const overallMax = Math.max(...data.map(d => d.weight));
-
-data.forEach((point, i) => {
-  const x = padding + (i / (data.length - 1)) * graphWidth;
-  const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
-
-  const isCurrentPB = point.weight === overallMax;
-
-  ctx.fillStyle = isCurrentPB ? "gold" : "#3b82f6";
-
-  ctx.beginPath();
-  ctx.arc(x, y, isCurrentPB ? 5 : 3, 0, Math.PI * 2);
-  ctx.fill();
-});
-
-    // ---- Labels ----
-    ctx.fillStyle = "#666";
-ctx.font = "10px Arial";
-
-data.forEach((point, i) => {
-  // Show fewer labels (avoid clutter)
-  if (i % 2 !== 0) return;
-
-  const x = padding + (i / (data.length - 1)) * graphWidth;
-
-  const d = new Date(point.date);
-  const label = `${d.getDate()}/${d.getMonth()+1}`;
-
-  ctx.fillText(label, x - 12, canvas.height - 5);
-});
-
-    // ---- Title ----
+    // ---- Card ----
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `<strong>${lift} Progress (6 months)</strong>`;
