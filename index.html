@@ -344,7 +344,7 @@ function addSession(){
     timer: 0,
     timerRunning: false,
     gvtCount: 0,
-    date: new Date().toISOString()
+    date: new Date().toISOString().split("T")[0] // ✅ clean YYYY-MM-DD
   });
   saveDB();
   render();
@@ -354,6 +354,11 @@ function addSession(){
   s.sets = s.sets || [];
   s.isolations = s.isolations || [];
   s.notes = s.notes || "";
+
+  if (!s.date) {
+    s.date = new Date().toISOString().split("T")[0];
+  }
+
   return s;
 }
 
@@ -446,6 +451,16 @@ if (isPB(session)) {
         ${LIFTS.map(l => `<option ${l===session.lift?"selected":""}>${l}</option>`).join("")}
       </select>
     `;
+
+curr.innerHTML += `
+  <div style="margin-bottom:6px">
+    <input type="date"
+      value="${session.date || ""}"
+      ${session.completed ? "disabled" : ""}
+      onchange="updateDate('${session.id}', this.value)">
+  </div>
+`;
+    
 const isGVT = getWeekType() === "GVT";
 
 if (isGVT) {
@@ -897,6 +912,14 @@ function initAudio(){
 }
   let interval = null;
 
+function updateDate(id, value){
+  const s = getWeek().find(x => x.id === id);
+  if (!s) return;
+
+  s.date = value;
+  saveDB();
+}
+  
 function startTimer(id){
   initAudio();
   const s = getWeek().find(x => x.id === id);
