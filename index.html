@@ -83,6 +83,10 @@ button[style*="ef4444"]{
   <button onclick="setView('main')">Main</button>
   <button onclick="setView('progress')">Progress</button>
   <button onclick="setView('history')">History</button>
+
+    <button onclick="graphMode='weight'; render()">Weight</button>
+<button onclick="graphMode='volume'; render()">Volume</button>
+    
 </div>
 
 <!-- MAIN -->
@@ -223,6 +227,21 @@ function getPB(lift){
   });
 
   return pbs;
+}
+
+  function calculateSessionVolume(session){
+  let total = 0;
+
+  session.sets.forEach(set => {
+    const w = Number(set.w);
+    const r = Number(set.r);
+
+    if (w && r) {
+      total += w * r;
+    }
+  });
+
+  return total;
 }
   
 function hydrateSessionFromHistory(session) {
@@ -460,6 +479,13 @@ curr.innerHTML += `
     </select>
   </div>
 `;
+    const volume = calculateSessionVolume(session);
+
+curr.innerHTML += `
+  <div style="margin-top:6px;font-size:0.8rem;color:#555">
+    Volume: <strong>${volume} kg</strong>
+  </div>
+`;
     
 const isGVT = session.type === "GVT";
 
@@ -653,9 +679,10 @@ card.innerHTML = `
 
     if (max > 0) {
       entries.push({
-        weight: max,
-        date: sessionDate || new Date().toISOString()
-      });
+  weight: max,
+  volume: calculateSessionVolume(session),
+  date: sessionDate || new Date().toISOString()
+});
     }
   }
 
@@ -688,7 +715,9 @@ card.innerHTML = `
   
 function renderHistory(container){
   const lifts = ["Squat","Bench","Deadlift"];
-
+  
+let graphMode = "weight"; // or "volume"
+  
   lifts.forEach(lift => {
 
     const data = getLiftHistory(lift);
@@ -704,7 +733,7 @@ function renderHistory(container){
     const graphHeight = canvas.height - padding * 2;
     const graphWidth = canvas.width - padding * 2;
 
-    const weights = data.map(d => d.weight);
+    const values = data.map(d => graphMode === "volume" ? d.volume : d.weight);
     const maxW = Math.max(...weights);
     const minW = Math.min(...weights);
     const range = maxW - minW || 1;
@@ -756,9 +785,9 @@ function renderHistory(container){
         const point = data[i];
 
         const x = padding + (data.length === 1 ? 0.5 : i / (data.length - 1)) * graphWidth;
-        const y = canvas.height - padding - ((point.weight - minW) / range) * graphHeight;
+        const y = canvas.height - padding - ((point[graphMode] - minW) / range) * graphHeight;
 
-        const isPB = point.weight === overallMax;
+        const isPB = point[graphMode] === overallMax;
         const isLatest = i === lastIndex;
 
         if (isPB) ctx.fillStyle = "gold";
@@ -820,7 +849,7 @@ function renderHistory(container){
       const point = data[closestIndex];
       const d = new Date(point.date);
 
-      alert(`${lift}\n${point.weight} kg\n${d.toDateString()}`);
+      alert(`${lift}\n${point[graphMode]} kg\n${d.toDateString()}`);
     });
 
     // ---- Card ----
