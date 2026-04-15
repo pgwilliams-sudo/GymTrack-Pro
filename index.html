@@ -612,13 +612,19 @@ if (est > bestEst1RM) {
 card.innerHTML = `
   <strong>${lift}</strong><br><br>
 
-  🟢 <strong>Actual</strong><br>
-  ${bestWeight ? `🏆 <strong>Max Weight:</strong> ${bestWeight} kg (W${bestWeightWeek})<br><small>${formatDate(bestWeightDate)}</small><br>` : ""}
-  ${best5RM ? `🏆 <strong>5RM:</strong> ${best5RM} kg (W${best5RMWeek})<br><small>${formatDate(best5RMDate)}</small><br>` : "<em>No 5RM yet</em><br>"}
-  <br>
+  <div style="margin-bottom:6px">
+    🟢 <strong>Actual</strong>
+  </div>
 
-  🔵 <strong>Estimated</strong><br>
-  ${bestEst1RM ? `<strong>1RM:</strong> ${bestEst1RM} kg (W${bestEst1RMWeek})<br><small>${formatDate(bestEst1RMDate)}</small>` : "<em>No data</em>"}
+  ${bestWeight ? `🏆 <strong>Max Weight:</strong> ${bestWeight} kg<br><small>${formatDate(bestWeightDate)}</small><br><br>` : ""}
+
+  ${best5RM ? `🏆 <strong>5RM:</strong> ${best5RM} kg<br><small>${formatDate(best5RMDate)}</small><br><br>` : "<em>No 5RM yet</em><br><br>"}
+
+  <div style="margin-bottom:6px">
+    🔵 <strong>Estimated</strong>
+  </div>
+
+  ${bestEst1RM ? `<strong>1RM:</strong> ${bestEst1RM} kg<br><small>${formatDate(bestEst1RMDate)}</small>` : "<em>No data</em>"}
 `;
 
     container.append(card);
