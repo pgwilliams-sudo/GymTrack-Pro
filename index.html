@@ -50,6 +50,31 @@ button[style*="ef4444"]{
   .card{
   border-left:4px solid #3b82f6;
 }
+  #historyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#historyBtn {
+  width: 100%;
+}
+
+#graphControls {
+  display: flex;
+  gap: 6px;
+}
+
+.graph-btn-active {
+  background: #3b82f6;
+  color: white;
+}
+
+.graph-btn-inactive {
+  background: #e5e7eb;
+  color: black;
+}
+}
 </style>
 </head>
 
@@ -79,14 +104,17 @@ button[style*="ef4444"]{
   <div id="weekGrid" class="row" style="margin-top:8px"></div>
 </div>
 
-  <div class="row" style="margin-top:8px">
+  <div class="row" style="margin-top:8px; align-items:flex-start;">
   <button onclick="setView('main')">Main</button>
   <button onclick="setView('progress')">Progress</button>
-  <button onclick="setView('history')">History</button>
 
-  <div id="graphControls">
-    <button onclick="setGraphMode('weight')">Weight</button>
-    <button onclick="setGraphMode('volume')">Volume</button>
+  <div id="historyBlock">
+    <button onclick="setView('history')" id="historyBtn">History</button>
+
+    <div id="graphControls">
+      <button id="weightBtn" onclick="setGraphMode('weight')">Weight</button>
+      <button id="volumeBtn" onclick="setGraphMode('volume')">Volume</button>
+    </div>
   </div>
 </div>
 
@@ -897,8 +925,23 @@ function render(){
   document.getElementById("cycleNumber").textContent = db.cycle;
 
   const graphControls = document.getElementById("graphControls");
+const weightBtn = document.getElementById("weightBtn");
+const volumeBtn = document.getElementById("volumeBtn");
+
+// Show only on History page
 if (graphControls) {
   graphControls.style.display = currentView === "history" ? "flex" : "none";
+}
+
+// Button state (active vs inactive)
+if (weightBtn && volumeBtn) {
+  if (graphMode === "weight") {
+    weightBtn.className = "graph-btn-active";
+    volumeBtn.className = "graph-btn-inactive";
+  } else {
+    weightBtn.className = "graph-btn-inactive";
+    volumeBtn.className = "graph-btn-active";
+  }
 }
 
   // ✅ Normalise ALL sessions first
