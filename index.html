@@ -756,6 +756,28 @@ const minW = Math.min(...values);
       ctx.lineTo(canvas.width - padding, canvas.height - padding);
       ctx.stroke();
 
+      // ---- Y Axis Labels ----
+ctx.fillStyle = "#666";
+ctx.font = "10px Arial";
+ctx.textAlign = "right";
+
+const steps = 4; // number of horizontal lines
+
+for (let i = 0; i <= steps; i++) {
+  const value = minW + (range * i / steps);
+  const y = canvas.height - padding - (i / steps) * graphHeight;
+
+  // Label
+  ctx.fillText(Math.round(value), padding - 5, y + 3);
+
+  // Grid line
+  ctx.strokeStyle = "#eee";
+  ctx.beginPath();
+  ctx.moveTo(padding, y);
+  ctx.lineTo(canvas.width - padding, y);
+  ctx.stroke();
+}
+
       // ---- Smooth Main Line ----
       ctx.strokeStyle = "#3b82f6";
       ctx.lineWidth = 2;
