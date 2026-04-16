@@ -8,6 +8,8 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3b82f6">
 
+
+
 <style>
 :root {
   --primary: #6366f1;
@@ -52,8 +54,9 @@ body {
 }
 
 .locked {
-  border: 2px solid var(--secondary);
-  opacity: 0.85;
+  background: var(--secondary-soft);
+  border: 1px solid var(--secondary);
+  opacity: 0.9;
   filter: saturate(0.9);
 }
   
@@ -200,13 +203,6 @@ button[style*="ef4444"] {
   margin-top:6px;
 }
 
-/* COMPLETED SESSION */
-.locked {
-  background: var(--secondary-soft);
-  border: 1px solid var(--secondary);
-  opacity: 0.9;
-}
-
 /* HIDDEN */
 .hidden {display:none;}
 
@@ -232,11 +228,16 @@ button[style*="ef4444"] {
 </div>
   <div class="row">
     <button onclick="changeWeek(-1)">◀</button>
+    <select id="cycleSelect" onchange="switchCycle(this.value)">
+  <option value="current">Current Cycle</option>
+</select>
     <strong id="weekTitle">Week 1</strong>
     <button onclick="changeWeek(1)">▶</button>
 
     <button onclick="addSession()">Add Session</button>
-    <button onclick="cycleComplete()">Cycle Complete</button>
+    <button onclick="completeCycle()" style="background:#16a34a;color:#fff">
+  Complete Cycle
+</button>
 
     <button onclick="exportData()">Export</button>
     <button onclick="document.getElementById('importFile').click()">Import</button>
@@ -267,6 +268,8 @@ button[style*="ef4444"] {
 
 <script>
   const APP_VERSION = "3.0.0";
+
+    let viewing = "current"; // or index of history
 /* ================= DATA ================= */
 
 const MAX_WEEKS = 12;
@@ -281,11 +284,16 @@ function setView(view){
   
 const LIFTS = ["Squat","Bench","Deadlift","Row","Overhead Press","Open"];
 
-let db = JSON.parse(localStorage.getItem("db")) || {};
-
-db.cycle = db.cycle || 1;
-db.weeks = db.weeks || {};
-db.history = db.history || [];
+let db = JSON.parse(localStorage.getItem('db')) || {
+  cycle: 1,
+  weeks: {},   
+  current:{
+    lifts:{Squat:[],Bench:[],Deadlift:[]},
+    isolations:{Squat:[],Bench:[],Deadlift:[]},
+    pbs:{Squat:0,Bench:0,Deadlift:0}
+  },
+  history:[]
+};
 
 function saveDB(){
   localStorage.setItem("db", JSON.stringify(db));
@@ -302,6 +310,23 @@ function getWeek(){
 function setGraphMode(mode){
   graphMode = mode;
   render();
+}
+
+  function switchCycle(val){
+  viewing = val;
+  render();
+}
+
+function updateCycleDropdown(){
+  const sel = document.getElementById('cycleSelect');
+  sel.innerHTML = '<option value="current">Current Cycle</option>';
+
+  db.history.forEach((_, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `Cycle ${i+1}`;
+    sel.appendChild(opt);
+  });
 }
   
   function getPreviousSession(currentSession) {
@@ -1076,6 +1101,7 @@ for (let i = 0; i <= steps; i++) {
 }
   
 function render(){
+  updateCycleDropdown();
   document.getElementById("weekTitle").textContent = `Week ${currentWeek}`;
   renderWeekButtons();
 
@@ -1090,7 +1116,7 @@ function render(){
   const graphControls = document.getElementById("graphControls");
 const weightBtn = document.getElementById("weightBtn");
 const volumeBtn = document.getElementById("volumeBtn");
-
+    
 // Show only on History page
 if (graphControls) {
   graphControls.style.display = currentView === "history" ? "flex" : "none";
@@ -1139,7 +1165,7 @@ function updateLift(id, v){
   saveDB();
   render();
 }
-function updateSet(id,i,f,v){getWeek().find(s=>s.id===id).sets[i][f]=v;saveDB()}
+function updateSet(id,i,f,v){getWeek().find(s=>s.id===id).sets[i][f]=v;saveDB();render();}
 function updateIso(id,i,f,v){getWeek().find(s=>s.id===id).isolations[i][f]=v;saveDB()}
 function updateNotes(id,v){getWeek().find(s=>s.id===id).notes=v;saveDB()}
 function updateMainSets(id, v){
@@ -1273,37 +1299,49 @@ function renderWeekButtons(){
   }
 }
 
-function cycleComplete() {
-  if (!confirm(`Cycle ${db.cycle} complete. Backup now?`)) return;
+function completeCycle(){
+  if(!confirm('Complete cycle and start new one?')) return;
 
-  // 1️⃣ Export backup
-  exportData();
+  const cycleCopy = {
+  weeks: JSON.parse(JSON.stringify(db.weeks))
+};
+  db.weeks = {};        // ✅ reset sessions
+db.cycle = (db.cycle || 1) + 1;  // ✅ increment cycle
 
-  // 2️⃣ Store completed cycle number
-  const completedCycle = db.cycle;
+  // Save to history
+  db.history.push(cycleCopy);
 
-  // 3️⃣ Archive current cycle
-  db.history.push({
-    cycle: completedCycle,
-    weeks: JSON.parse(JSON.stringify(db.weeks)),
-    weekTypes: JSON.parse(JSON.stringify(db.weekTypes || {}))
-  });
+  // 🔥 AUTO DOWNLOAD BACKUP
+  downloadBackup(cycleCopy);
 
-  // 4️⃣ Advance cycle
-  db.cycle++;
+  // Reset current
+  db.current = {
+    lifts:{Squat:[],Bench:[],Deadlift:[]},
+    isolations:{Squat:[],Bench:[],Deadlift:[]},
+    pbs:{Squat:0,Bench:0,Deadlift:0}
+  };
 
-  // 5️⃣ Reset current cycle data
-  db.weeks = {};
-  db.weekTypes = {};
-
-  // 6️⃣ Reset UI
+  viewing = "current";
   currentWeek = 1;
 
-  // 7️⃣ Save + render
   saveDB();
   render();
+}
 
-  alert(`Cycle ${completedCycle} archived. New cycle started.`);
+  function downloadBackup(data){
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: 'application/json'
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const filename = `gymtrack_cycle_${date}.json`;
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+
+  URL.revokeObjectURL(a.href);
 }
 
 function resetAll(){
@@ -1332,10 +1370,10 @@ document.getElementById("importFile").addEventListener("change",e=>{
   try {
     const data = JSON.parse(ev.target.result);
 
-    if (!data.weeks || !data.cycle) {
-      alert("Invalid backup file");
-      return;
-    }
+    if (!data || typeof data !== "object") {
+  alert("Invalid backup file");
+  return;
+}
 
     db = data;
     saveDB();
