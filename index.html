@@ -84,8 +84,8 @@ button[style*="ef4444"]{
   <button onclick="setView('progress')">Progress</button>
   <button onclick="setView('history')">History</button>
 
-    <button onclick="graphMode='weight'; render()">Weight</button>
-<button onclick="graphMode='volume'; render()">Volume</button>
+    <button onclick="setGraphMode('weight')">Weight</button>
+<button onclick="setGraphMode('volume')">Volume</button>
     
 </div>
 
@@ -126,6 +126,11 @@ function getWeek(){
   return db.weeks[currentWeek];
 }
 
+function setGraphMode(mode){
+  graphMode = mode;
+  render();
+}
+  
   function getPreviousSession(currentSession) {
   const currentType = currentSession.type;
 
@@ -394,6 +399,8 @@ function editSession(id){
 
    // ---- RENDER ----
 
+let graphMode = "weight"; // or "volume"
+  
 function renderMain(c){
   getWeek().forEach(session => {
     hydrateSessionFromHistory(session);
@@ -660,31 +667,31 @@ card.innerHTML = `
   function getLiftHistory(lift) {
   let entries = [];
 
-  // Helper to extract max + date from a week
-  function processWeek(week) {
-    let max = 0;
-    let sessionDate = null;
+// Helper to extract max + date from a week
+function processWeek(week) {
+  let max = 0;
+  let bestSession = null;
 
-    week.forEach(session => {
-      if (session.lift !== lift || !session.completed) return;
+  week.forEach(session => {
+    if (session.lift !== lift || !session.completed) return;
 
-      session.sets.forEach(set => {
-        const w = Number(set.w);
-        if (w > max) {
-          max = w;
-          sessionDate = session.date || sessionDate;
-        }
-      });
+    session.sets.forEach(set => {
+      const w = Number(set.w);
+      if (w > max) {
+        max = w;
+        bestSession = session;
+      }
     });
+  });
 
-    if (max > 0) {
-      entries.push({
-  weight: max,
-  volume: calculateSessionVolume(session),
-  date: sessionDate || new Date().toISOString()
-});
-    }
+  if (max > 0 && bestSession) {
+    entries.push({
+      weight: max,
+      volume: calculateSessionVolume(bestSession),
+      date: bestSession.date || new Date().toISOString()
+    });
   }
+}
 
   // 1️⃣ Past cycles
   if (db.history && Array.isArray(db.history)) {
@@ -716,8 +723,6 @@ card.innerHTML = `
 function renderHistory(container){
   const lifts = ["Squat","Bench","Deadlift"];
   
-let graphMode = "weight"; // or "volume"
-  
   lifts.forEach(lift => {
 
     const data = getLiftHistory(lift);
@@ -734,8 +739,8 @@ let graphMode = "weight"; // or "volume"
     const graphWidth = canvas.width - padding * 2;
 
     const values = data.map(d => graphMode === "volume" ? d.volume : d.weight);
-    const maxW = Math.max(...weights);
-    const minW = Math.min(...weights);
+const maxW = Math.max(...values);
+const minW = Math.min(...values);
     const range = maxW - minW || 1;
 
     let progress = 0;
@@ -760,13 +765,13 @@ let graphMode = "weight"; // or "volume"
 
       for (let i = 0; i < visiblePoints; i++) {
         const x = padding + (data.length === 1 ? 0.5 : i / (data.length - 1)) * graphWidth;
-        const y = canvas.height - padding - ((data[i].weight - minW) / range) * graphHeight;
+        const y = canvas.height - padding - ((data[i][graphMode] - minW) / range) * graphHeight;
 
         if (i === 0) {
           ctx.moveTo(x, y);
         } else {
           const prevX = padding + ((i - 1) / (data.length - 1)) * graphWidth;
-          const prevY = canvas.height - padding - ((data[i - 1].weight - minW) / range) * graphHeight;
+          const prevY = canvas.height - padding - ((data[i - 1][graphMode] - minW) / range) * graphHeight;
 
           const midX = (prevX + x) / 2;
           const midY = (prevY + y) / 2;
@@ -778,7 +783,7 @@ let graphMode = "weight"; // or "volume"
       ctx.stroke();
 
       // ---- Points ----
-      const overallMax = Math.max(...weights);
+      const overallMax = Math.max(...values);
       const lastIndex = data.length - 1;
 
       for (let i = 0; i < visiblePoints; i++) {
@@ -865,6 +870,8 @@ let graphMode = "weight"; // or "volume"
 function render(){
   document.getElementById("weekTitle").textContent = `Week ${currentWeek}`;
   renderWeekButtons();
+
+  document.getElementById("cycleNumber").textContent = db.cycle;
 
   // ✅ Normalise ALL sessions first
   getWeek().forEach(s => normaliseSession(s));
@@ -1083,11 +1090,23 @@ function exportData(){
 document.getElementById("importFile").addEventListener("change",e=>{
   const r=new FileReader();
   r.onload=ev=>{
-    if(confirm("Replace all data?")){
-      db=JSON.parse(ev.target.result);
-      saveDB();
-      render();
+    if (confirm("Replace all data?")) {
+  try {
+    const data = JSON.parse(ev.target.result);
+
+    if (!data.weeks || !data.cycle) {
+      alert("Invalid backup file");
+      return;
     }
+
+    db = data;
+    saveDB();
+    render();
+
+  } catch {
+    alert("Import failed – invalid file");
+  }
+}
   };
   r.readAsText(e.target.files[0]);
 });
