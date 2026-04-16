@@ -70,6 +70,101 @@ body {
   margin-top:8px;
 }
 
+/* ===== CARD LAYOUT UPGRADE ===== */
+
+.card {
+  position: relative;
+  padding-left: 14px; /* space for left colour bar */
+}
+
+/* LEFT COLOUR BAR */
+.card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  border-radius: 12px 0 0 12px;
+  background: var(--primary);
+}
+
+/* HEADER */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.card-meta {
+  font-size: 0.8rem;
+  color: var(--subtext);
+}
+
+.pb-badge {
+  font-size: 0.9rem;
+}
+
+/* MAIN GRID */
+.session-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* SET BLOCKS */
+.set-block {
+  font-size: 0.85rem;
+}
+
+.set-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+/* PREVIOUS SIDE */
+.prev {
+  background: #f8fafc;
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+/* ISOLATION (NEW STYLE) */
+.iso {
+  background: transparent;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.iso-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.iso-row {
+  display: flex;
+  gap: 4px;
+}
+
+/* NOTES */
+.notes-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* VOLUME */
+.volume {
+  font-size: 0.8rem;
+  color: var(--subtext);
+  margin-top: 6px;
+}
+  
 /* WEEK BUTTONS */
 .week-btn {
   padding:6px;
@@ -188,14 +283,6 @@ button[style*="ef4444"] {
   flex-wrap:wrap;
 }
 
-/* ISOLATION */
-.iso {
-  background: var(--secondary-soft);
-  padding:6px;
-  border-radius:8px;
-  margin-bottom:6px;
-}
-
 /* TEXT */
 .small {
   font-size:11px;
@@ -215,6 +302,9 @@ button[style*="ef4444"] {
 .stats-lift {
   margin-left:10px;
 }
+
+
+  
 </style>    
 </head>
 
@@ -303,8 +393,18 @@ const WEEK_TYPES = ["GVT","Core","Pause","Tempo","Other"];
 /* ================= HELPERS ================= */
 
 function getWeek(){
-  if(!db.weeks[currentWeek]) db.weeks[currentWeek] = [];
-  return db.weeks[currentWeek];
+  const weeks = getActiveWeeks();
+
+  if (viewing !== "current") {
+    return weeks[currentWeek] || [];
+  }
+
+  if(!weeks[currentWeek]) weeks[currentWeek] = [];
+  return weeks[currentWeek];
+}
+
+  function isReadOnly(){
+  return viewing !== "current";
 }
 
 function setGraphMode(mode){
@@ -315,6 +415,15 @@ function setGraphMode(mode){
   function switchCycle(val){
   viewing = val;
   render();
+}
+
+  function getActiveWeeks(){
+  if (viewing === "current") {
+    return db.weeks;
+  }
+
+  const cycle = db.history[viewing];
+  return cycle ? cycle.weeks : {};
 }
 
 function updateCycleDropdown(){
@@ -526,6 +635,7 @@ function hydrateSessionFromHistory(session) {
 /* ================= SESSION OPS ================= */
 
 function addSession(){
+  if (viewing !== "current") return;
   getWeek().unshift({
     id: crypto.randomUUID(),
     lift: "Squat",
@@ -613,7 +723,24 @@ function renderMain(c){
 };
 
 const card = document.createElement("div");
-card.style.background = liftColors[session.lift] || 'var(--card)';
+
+if (isPB(session)) {
+  const badge = document.createElement("div");
+  badge.className = "pb-badge";
+  badge.innerText = "🏆";
+  card.appendChild(badge);
+}
+    
+const liftColors = {
+  Squat: 'var(--primary)',
+  Bench: 'var(--secondary)',
+  Deadlift: 'var(--accent)',
+  Row: '#0ea5e9',
+  "Overhead Press": '#a855f7',
+  Open: '#64748b'
+};
+
+card.classList.add("lift-" + session.lift.replaceAll(" ",""));
 
     if (isPB(session)) {
       card.style.border = "2px solid gold";
@@ -669,13 +796,13 @@ curr.innerHTML += `
   <div style="margin-bottom:6px">
     <input type="date"
       value="${session.date || ""}"
-      ${session.completed ? "disabled" : ""}
+      ${session.completed || isReadOnly() ? "disabled" : ""}
       onchange="updateDate('${session.id}', this.value)">
   </div>
 `;
     
     curr.innerHTML += `
-      <select ${session.completed ? "disabled" : ""}
+      <select ${session.completed || isReadOnly() ? "disabled" : ""}
         onchange="updateLift('${session.id}',this.value)">
         ${LIFTS.map(l => `<option ${l===session.lift?"selected":""}>${l}</option>`).join("")}
       </select>
@@ -684,7 +811,7 @@ curr.innerHTML += `
 curr.innerHTML += `
   <div style="margin-bottom:6px">
     <select
-      ${session.completed ? "disabled" : ""}
+      ${session.completed || isReadOnly() ? "disabled" : ""}
       onchange="updateType('${session.id}', this.value)">
       ${WEEK_TYPES.map(t => `
         <option value="${t}" ${t === session.type ? "selected" : ""}>
@@ -710,7 +837,7 @@ if (isGVT) {
       Sets
       <input type="number" placeholder="e.g. 10"
         value="${session.mainSets || ""}"
-        ${session.completed ? "disabled" : ""}
+        ${session.completed || isReadOnly() ? "disabled" : ""}
         onblur="updateMainSets('${session.id}', this.value)">
     </div>
   `;
@@ -730,7 +857,7 @@ if (isGVT) {
       curr.innerHTML += `
         <div class="set">
           ${i+1}
-          <input type="number" placeholder="kg" value="${set.w}" ${session.completed?"disabled":""}
+          <input type="number" placeholder="kg" value="${set.w}" ${session.completed || isReadOnly() ? "disabled" : ""}
   onblur="updateSet('${session.id}',${i},'w',this.value)">
 <input type="number" placeholder="reps" value="${set.r}" ${session.completed?"disabled":""}
   onblur="updateSet('${session.id}',${i},'r',this.value)">
@@ -739,26 +866,34 @@ if (isGVT) {
     });
 
     session.isolations.forEach((iso,i) => {
-      curr.innerHTML += `
-        <div class="iso">
-          <input placeholder="Exercise" value="${iso.name||""}" ${session.completed?"disabled":""}
-            onblur="updateIso('${session.id}',${i},'name',this.value)">
-          <input placeholder="Sets" value="${iso.sets||""}" ${session.completed?"disabled":""}
-            onblur="updateIso('${session.id}',${i},'sets',this.value)">
-          <input placeholder="Reps" value="${iso.reps||""}" ${session.completed?"disabled":""}
-            onblur="updateIso('${session.id}',${i},'reps',this.value)">
-          <input placeholder="Weight" value="${iso.weight||""}" ${session.completed?"disabled":""}
-            onblur="updateIso('${session.id}',${i},'weight',this.value)">
-        </div>
-      `;
-    });
+  left.innerHTML += `
+    <div class="iso-block">
+      <input class="iso-name" placeholder="Exercise"
+        value="${iso.name||""}"
+        ${session.completed || isReadOnly() ? "disabled" : ""}
+        onblur="updateIso('${session.id}',${i},'name',this.value)">
+
+      <div class="set-row">
+        <input placeholder="Sets" value="${iso.sets||""}"
+          ${session.completed || isReadOnly() ? "disabled" : ""}
+          onblur="updateIso('${session.id}',${i},'sets',this.value)">
+        <input placeholder="Reps" value="${iso.reps||""}"
+          ${session.completed || isReadOnly() ? "disabled" : ""}
+          onblur="updateIso('${session.id}',${i},'reps',this.value)">
+        <input placeholder="Weight" value="${iso.weight||""}"
+          ${session.completed || isReadOnly() ? "disabled" : ""}
+          onblur="updateIso('${session.id}',${i},'weight',this.value)">
+      </div>
+    </div>
+  `;
+});
 
   curr.innerHTML += `
   <button onclick="addIsolation('${session.id}')">+ Add Exercise</button>
 `;
 
     curr.innerHTML += `
-      <textarea ${session.completed?"disabled":""}
+      <textarea ${session.completed || isReadOnly() ? "disabled" : ""}
         onblur="updateNotes('${session.id}',this.value)">${session.notes}</textarea>
     `;
 
@@ -767,13 +902,103 @@ if (isGVT) {
       : `<button onclick="completeSession('${session.id}')">Complete</button>
          <button onclick="deleteSession('${session.id}')">Delete</button>`;
 
-    const row = document.createElement("div");
-    row.className = "row";
-    row.append(prev, curr);
-    card.append(row);
-    c.append(card);
+    const wrapper = document.createElement("div");
+wrapper.className = "session-grid";
+
+/* LEFT = CURRENT */
+const left = document.createElement("div");
+
+/* RIGHT = PREVIOUS */
+const right = document.createElement("div");
+right.className = "prev-box";
+
+/* ---------- BUILD LEFT (CURRENT) ---------- */
+
+// Date + Lift + Type
+left.innerHTML += `
+  <div class="top-row">
+    <input type="date"
+      value="${session.date || ""}"
+      ${session.completed || isReadOnly() ? "disabled" : ""}
+      onchange="updateDate('${session.id}', this.value)">
+
+    <select ${session.completed || isReadOnly() ? "disabled" : ""}
+      onchange="updateLift('${session.id}',this.value)">
+      ${LIFTS.map(l => `<option ${l===session.lift?"selected":""}>${l}</option>`).join("")}
+    </select>
+
+    <select
+      ${session.completed || isReadOnly() ? "disabled" : ""}
+      onchange="updateType('${session.id}', this.value)">
+      ${WEEK_TYPES.map(t => `
+        <option value="${t}" ${t === session.type ? "selected" : ""}>${t}</option>
+      `).join("")}
+    </select>
+  </div>
+`;
+
+// Sets
+session.sets.forEach((set,i) => {
+  left.innerHTML += `
+    <div class="set-row">
+      <span>${i+1}</span>
+      <input type="number" placeholder="kg" value="${set.w || ""}"
+        ${session.completed || isReadOnly() ? "disabled" : ""}
+        onblur="updateSet('${session.id}',${i},'w',this.value)">
+      <input type="number" placeholder="reps" value="${set.r || ""}"
+        ${session.completed || isReadOnly() ? "disabled" : ""}
+        onblur="updateSet('${session.id}',${i},'r',this.value)">
+    </div>
+  `;
+});
+
+// Volume (AFTER sets)
+const volume = calculateSessionVolume(session);
+left.innerHTML += `
+  <div class="volume">
+    Volume: <strong>${volume} kg</strong>
+  </div>
+`;
+
+/* ---------- BUILD RIGHT (PREVIOUS) ---------- */
+
+right.innerHTML = `<strong>Previous</strong><br>`;
+
+// Main previous (mirrors sets layout)
+if (session._prevMain) {
+  session._prevMain.sets.forEach((set,i) => {
+    if (set.w || set.r) {
+      right.innerHTML += `
+        <div class="set-row">
+          <span>${i+1}</span>
+          <span>${set.w || ""}</span>
+          <span>${set.r || ""}</span>
+        </div>
+      `;
+    }
   });
 }
+
+// Isolation previous
+if (session._prevIso) {
+  right.innerHTML += `<div class="iso-title">Isolation</div>`;
+  session._prevIso.isolations.forEach(i => {
+    if (i.name) {
+      right.innerHTML += `
+        <div class="iso-block">
+          <div class="iso-name">${i.name}</div>
+          <div class="iso-sets">${i.sets} × ${i.reps} @ ${i.weight}</div>
+        </div>
+      `;
+    }
+  });
+}
+
+/* ---------- APPEND ---------- */
+
+wrapper.append(left, right);
+card.append(wrapper);
+c.append(card);
   
     function estimate1RM(weight, reps){
     weight = Number(weight);
@@ -1111,7 +1336,10 @@ function render(){
   Deadlift: 'var(--accent-soft)'
 };
     
-  document.getElementById("cycleNumber").textContent = db.cycle;
+  document.getElementById("cycleNumber").textContent =
+  viewing === "current"
+    ? db.cycle
+    : `History ${Number(viewing) + 1}`;
 
   const graphControls = document.getElementById("graphControls");
 const weightBtn = document.getElementById("weightBtn");
