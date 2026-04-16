@@ -84,9 +84,10 @@ button[style*="ef4444"]{
   <button onclick="setView('progress')">Progress</button>
   <button onclick="setView('history')">History</button>
 
+  <div id="graphControls">
     <button onclick="setGraphMode('weight')">Weight</button>
-<button onclick="setGraphMode('volume')">Volume</button>
-    
+    <button onclick="setGraphMode('volume')">Volume</button>
+  </div>
 </div>
 
 <!-- MAIN -->
@@ -894,6 +895,11 @@ function render(){
   renderWeekButtons();
 
   document.getElementById("cycleNumber").textContent = db.cycle;
+
+  const graphControls = document.getElementById("graphControls");
+if (graphControls) {
+  graphControls.style.display = currentView === "history" ? "flex" : "none";
+}
 
   // ✅ Normalise ALL sessions first
   getWeek().forEach(s => normaliseSession(s));
