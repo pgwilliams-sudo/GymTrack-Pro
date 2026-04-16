@@ -52,8 +52,9 @@ body {
 }
 
 .locked {
-  background: var(--secondary-soft) !important;
-  border: 1px solid var(--secondary);
+  border: 2px solid var(--secondary);
+  opacity: 0.85;
+  filter: saturate(0.9);
 }
   
 /* LAYOUT */
@@ -155,7 +156,7 @@ button[style*="ef4444"] {
 }
 
 .prev {
-  background: var(--primary-soft);
+  background: #f1f5f9;   /* light grey */
   border-radius:8px;
   padding:8px;
   flex:1;
@@ -578,9 +579,12 @@ function renderMain(c){
     hydrateSessionFromHistory(session);
 
     const liftColors = {
-  Squat: 'var(--primary-soft)',
-  Bench: 'var(--secondary-soft)',
-  Deadlift: 'var(--accent-soft)'
+  Squat: 'var(--primary-soft)',        // blue
+  Bench: 'var(--secondary-soft)',      // green
+  Deadlift: 'var(--accent-soft)',      // amber
+  Row: '#e0f2fe',                      // light sky blue
+  "Overhead Press": '#f3e8ff',         // light purple
+  Open: '#f1f5f9'                      // neutral grey
 };
 
 const card = document.createElement("div");
