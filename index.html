@@ -1086,10 +1086,16 @@ for (let i = 0; i <= steps; i++) {
 }
 
       // ---- Smooth Main Line ----
-      ctx.strokeStyle =
-  lift === 'Squat' ? '#6366f1' :
-  lift === 'Bench' ? '#10b981' :
-  '#f59e0b';
+      const liftColors = {
+  Squat: '#6366f1',
+  Bench: '#10b981',
+  Deadlift: '#f59e0b',
+  Row: '#06b6d4',
+  "Overhead Press": '#8b5cf6',
+  Open: '#9ca3af'
+};
+
+ctx.strokeStyle = liftColors[lift] || '#6366f1';
       ctx.lineWidth = 2;
       ctx.beginPath();
 
