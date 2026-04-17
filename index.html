@@ -204,6 +204,61 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+  .prev table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.prev th,
+.prev td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 0;
+  font-size: 0.8rem;
+}
+
+.prev th {
+  font-weight: 600;
+  color: var(--subtext);
+}
+
+.prev td:first-child,
+.prev th:first-child {
+  width: 28px;
+}
+
+  .prev-section-title {
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--subtext);
+}
+
+.prev-iso-block {
+  padding: 4px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.prev-iso-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.prev-iso-sets {
+  font-size: 0.8rem;
+  color: var(--subtext);
+}
+
+  .prev-notes {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
   
 /* ISOLATION (NEW STYLE) */
 .iso {
@@ -1070,6 +1125,25 @@ function buildSessionCard(session, container) {
     });
   }
 
+    if (session._prevIso && session._prevIso.isolations?.some(i => i.name)) {
+    const isoTitle = document.createElement("div");
+    isoTitle.className = "prev-section-title";
+    isoTitle.textContent = "Previous isolation";
+    right.appendChild(isoTitle);
+
+    session._prevIso.isolations.forEach(iso => {
+      if (!iso.name) return;
+
+      const isoBlock = document.createElement("div");
+      isoBlock.className = "prev-iso-block";
+      isoBlock.innerHTML = `
+        <div class="prev-iso-name">${iso.name}</div>
+        <div class="prev-iso-sets">${iso.sets || ""} × ${iso.reps || ""} @ ${iso.weight || ""}</div>
+      `;
+      right.appendChild(isoBlock);
+    });
+  }
+  
   /* ================= ASSEMBLE ================= */
   wrapper.append(left, pbSlot, right);
   card.append(wrapper);
@@ -1081,16 +1155,16 @@ function buildSessionCard(session, container) {
   notesRow.className = "notes-row";
 
   notesRow.innerHTML = `
-    <textarea
-      ${session.completed || isReadOnly() ? "disabled" : ""}
-      onblur="updateNotes('${session.id}', this.value)"
-      placeholder="Notes">${session.notes || ""}</textarea>
+  <textarea
+    ${session.completed || isReadOnly() ? "disabled" : ""}
+    onblur="updateNotes('${session.id}', this.value)"
+    placeholder="Notes">${session.notes || ""}</textarea>
 
-    <div class="prev">
-      <strong>Previous Notes</strong><br>
-      ${session._prevMain?.notes || ""}
-    </div>
-  `;
+  <div class="prev">
+    <strong>Previous Notes</strong>
+    <div class="prev-notes">${session._prevMain?.notes || ""}</div>
+  </div>
+`;
 
   card.appendChild(notesRow);
 
