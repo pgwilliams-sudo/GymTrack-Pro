@@ -103,11 +103,17 @@ body {
 }
 
   .pb-badge {
-  position: absolute;
-  top: 10px;
-  right: 120px; /* pushes it left of previous box */
   font-size: 28px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
   animation: popIn 0.4s ease;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.2) rotate(-20deg); opacity: 0; }
+  60% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1); rotate: 0; }
 }
 
 @keyframes popIn {
@@ -118,14 +124,15 @@ body {
 
 /* 🎉 Confetti */
 .confetti {
-  position: absolute;
   width: 6px;
   height: 6px;
-  background: red;
-  top: 20px;
-  right: 130px;
-  opacity: 0.8;
+  position: absolute;
   animation: confetti-fall 0.8s ease-out forwards;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(40px) scale(0.6); opacity: 0; }
 }
 
 @keyframes confetti-fall {
@@ -136,8 +143,9 @@ body {
 /* MAIN GRID */
 .session-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 40px 1fr; /* middle slot for trophy */
   gap: 10px;
+  align-items: start;
 }
 
 /* SET BLOCKS */
@@ -721,6 +729,11 @@ function completeSession(id){
     s.date = new Date().toISOString();
   }
 
+  // 🎉 mark for one-time animation
+  if (isPB(s)) {
+    s.pbHit = true;
+  }
+
   saveDB();
   render();
 }
@@ -911,7 +924,28 @@ if (session._prevIso) {
 
 /* ---------- APPEND ---------- */
 
-wrapper.append(left, right);
+let pbSlot = document.createElement("div");
+
+if (session.pbHit) {
+  for (let i = 0; i < 12; i++) {
+    const conf = document.createElement("div");
+    conf.className = "confetti";
+    conf.style.background = ["#f59e0b","#10b981","#6366f1","#ef4444"][i % 4];
+    conf.style.animationDelay = (Math.random() * 0.3) + "s";
+    pbSlot.appendChild(conf);
+  }
+
+  // remove flag so it doesn't replay
+  delete session.pbHit;
+  saveDB();
+}
+    
+if (isPB(session)) {
+  pbSlot.className = "pb-badge";
+  pbSlot.textContent = "🏆";
+}
+
+wrapper.append(left, pbSlot, right);
 card.append(wrapper);
 c.append(card);
 
