@@ -415,7 +415,7 @@ function setGraphMode(mode){
 }
 
   function switchCycle(val){
-  viewing = val;
+  viewing = val === "current" ? "current" : Number(val);
   render();
 }
 
@@ -1209,6 +1209,7 @@ ctx.strokeStyle = liftColors[lift] || '#6366f1';
   
 function render(){
   updateCycleDropdown();
+  document.getElementById('cycleSelect').value = viewing;
   document.getElementById("weekTitle").textContent = `Week ${currentWeek}`;
   renderWeekButtons();
 
