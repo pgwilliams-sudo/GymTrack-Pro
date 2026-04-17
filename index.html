@@ -233,6 +233,10 @@ body {
   line-height: 1.35;
   white-space: pre-wrap;
 }
+
+  .prev-main {
+  margin-top: 44px;
+}
   
 /* ISOLATION (NEW STYLE) */
 .iso {
@@ -1042,7 +1046,7 @@ function buildSessionCard(session, container) {
 
   /* ================= RIGHT ================= */
   const right = document.createElement("div");
-  right.className = "prev";
+right.className = "prev prev-main";
 
   right.innerHTML = `
     <strong>Previous session</strong>
