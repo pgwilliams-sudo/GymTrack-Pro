@@ -108,6 +108,18 @@ body {
   align-items: flex-start;
   justify-content: center;
   animation: popIn 0.4s ease;
+  position: relative;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+  .pb-badge-slot {
+  min-width: 40px;
+  min-height: 40px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
 }
 
 @keyframes popIn {
@@ -137,6 +149,7 @@ body {
   align-items: start;
 }
 
+  
 /* SET BLOCKS */
 .set-block {
   font-size: 0.85rem;
@@ -239,6 +252,15 @@ input[type=number]{width:70px;}
 textarea{resize:none;width:100%;}
 
 /* BUTTONS */
+
+  .top-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  align-items: center;
+}
+  
 button {
   cursor:pointer;
   background: var(--primary);
@@ -446,6 +468,10 @@ function setGraphMode(mode){
     return db.weeks;
   }
 
+function getWeeksForLookup(){
+  return getActiveWeeks();
+}
+    
   const cycle = db.history[viewing];
   return cycle ? cycle.weeks : {};
 }
@@ -464,9 +490,10 @@ function updateCycleDropdown(){
   
   function getPreviousSession(currentSession) {
   const currentType = currentSession.type;
+  const weeks = getWeeksForLookup();
 
   // 1️⃣ Same week, earlier sessions
-  const weekSessions = getWeek();
+  const weekSessions = weeks[currentWeek] || [];
   const index = weekSessions.findIndex(s => s.id === currentSession.id);
 
   for (let i = index - 1; i >= 0; i--) {
@@ -480,9 +507,9 @@ function updateCycleDropdown(){
     }
   }
 
-  // 2️⃣ Previous weeks (MATCH TYPE ✅)
+  // 2️⃣ Previous weeks within the ACTIVE cycle being viewed
   for (let w = currentWeek - 1; w >= 1; w--) {
-    const sessions = db.weeks[w];
+    const sessions = weeks[w];
     if (!sessions) continue;
 
     for (let i = sessions.length - 1; i >= 0; i--) {
@@ -581,33 +608,27 @@ function getPB(lift){
 }
   
 function hydrateSessionFromHistory(session) {
-
-  delete session._prevMain;
-  delete session._prevIso;
-
-  // ✅ ALWAYS calculate previous data (even if completed)
   const prevMain = getPreviousSession(session);
   const prevIso = getPreviousIsolationSession(session);
 
   session._prevMain = prevMain || null;
   session._prevIso = prevIso || null;
 
-  // ❌ Only stop auto-populating inputs if completed
-  if (session.completed) return;
+  // In history view, never auto-fill or mutate session content
+  if (isReadOnly()) return;
 
-  /* ================= ISOLATIONS ================= */
+  // Only stop auto-populating inputs if completed
+  if (session.completed) return;
 
   // If lift changed, isolation data is invalid
   if (session.isolationLift && session.isolationLift !== session.lift) {
-    session.isolations = [{},{},{}];
+    session.isolations = [{}, {}, {}];
     delete session.isolationLift;
   }
 
   const hasIsolationData = session.isolations && session.isolations.length > 0;
 
   if (!hasIsolationData) {
-    const prevIso = getPreviousIsolationSession(session);
-
     if (
       prevIso &&
       prevIso.lift === session.lift &&
@@ -620,9 +641,10 @@ function hydrateSessionFromHistory(session) {
 }
   
   function getPreviousIsolationSession(currentSession) {
+  const weeks = getWeeksForLookup();
 
-  // 1️⃣ Same week, earlier sessions (ignore week type)
-  const weekSessions = getWeek();
+  // 1️⃣ Same week, earlier sessions
+  const weekSessions = weeks[currentWeek] || [];
   const index = weekSessions.findIndex(s => s.id === currentSession.id);
 
   for (let i = index - 1; i >= 0; i--) {
@@ -636,9 +658,9 @@ function hydrateSessionFromHistory(session) {
     }
   }
 
-  // 2️⃣ Previous weeks (IGNORE week type)
+  // 2️⃣ Previous weeks within the ACTIVE cycle being viewed
   for (let w = currentWeek - 1; w >= 1; w--) {
-    const sessions = db.weeks[w];
+    const sessions = weeks[w];
     if (!sessions) continue;
 
     for (let i = sessions.length - 1; i >= 0; i--) {
@@ -705,7 +727,8 @@ if (!s.type) {
 }
   
 function deleteSession(id){
-  db.weeks[currentWeek] = getWeek().filter(s=>s.id!==id);
+  const weeks = getActiveWeeks();
+  weeks[currentWeek] = getWeek().filter(s => s.id !== id);
   saveDB();
   render();
 }
@@ -738,242 +761,212 @@ function editSession(id){
 
 let graphMode = "weight"; // or "volume"
   
-function renderMain(c){
-  getWeek().forEach(session => {
-    hydrateSessionFromHistory(session);
+function buildSessionCard(session, container) {
+  hydrateSessionFromHistory(session);
 
-    const liftColors = {
-  Squat: 'var(--primary)',
-  Bench: 'var(--secondary)',
-  Deadlift: 'var(--accent)',
-  Row: '#06b6d4',
-  "Overhead Press": '#8b5cf6',
-  Open: '#9ca3af'
-};
+  const liftColors = {
+    Squat: 'var(--primary)',
+    Bench: 'var(--secondary)',
+    Deadlift: 'var(--accent)',
+    Row: '#06b6d4',
+    "Overhead Press": '#8b5cf6',
+    Open: '#9ca3af'
+  };
 
-const card = document.createElement("div");
-card.className = "card";
-    if (isPB(session)) {
-  const pb = document.createElement("div");
-  pb.className = "pb-badge";
-  pb.textContent = "🏆";
-  card.append(pb);
+  const card = document.createElement("div");
+  card.className = "card";
+  card.style.setProperty('--card-accent', liftColors[session.lift] || '#6366f1');
 
-  // 🎉 Confetti burst
-  for (let i = 0; i < 12; i++) {
-    const conf = document.createElement("div");
-    conf.className = "confetti";
-    conf.style.background = ["#f59e0b","#10b981","#6366f1","#ef4444"][i % 4];
-    conf.style.left = (80 + Math.random() * 40) + "%";
-    conf.style.animationDelay = (Math.random() * 0.3) + "s";
-    card.append(conf);
-  }
-}
-// Apply colour bar
-card.style.setProperty('--card-accent', liftColors[session.lift] || '#6366f1');
+  const wrapper = document.createElement("div");
+  wrapper.className = "session-grid";
 
-    
-    const wrapper = document.createElement("div");
-wrapper.className = "session-grid";
+  /* ================= LEFT ================= */
+  const left = document.createElement("div");
 
-/* LEFT = CURRENT */
-const left = document.createElement("div");
-
-/* RIGHT = PREVIOUS */
-const right = document.createElement("div");
-right.className = "prev";
-
-/* ---------- BUILD LEFT (CURRENT) ---------- */
-
-// Date + Lift + Type
-left.innerHTML += `
-  <div class="top-row">
-    <input type="date"
-      value="${session.date || ""}"
-      ${session.completed || isReadOnly() ? "disabled" : ""}
-      onchange="updateDate('${session.id}', this.value)">
-
-    <select ${session.completed || isReadOnly() ? "disabled" : ""}
-      onchange="updateLift('${session.id}',this.value)">
-      ${LIFTS.map(l => `<option ${l===session.lift?"selected":""}>${l}</option>`).join("")}
-    </select>
-
-    <select
-      ${session.completed || isReadOnly() ? "disabled" : ""}
-      onchange="updateType('${session.id}', this.value)">
-      ${WEEK_TYPES.map(t => `
-        <option value="${t}" ${t === session.type ? "selected" : ""}>${t}</option>
-      `).join("")}
-    </select>
-  </div>
-`;
-
-// Sets
-session.sets.forEach((set,i) => {
-  left.innerHTML += `
-    <div class="set-row">
-      <span>${i+1}</span>
-      <input type="number" placeholder="kg" value="${set.w || ""}"
+  left.innerHTML = `
+    <div class="top-row">
+      <input type="date"
+        value="${session.date || ""}"
         ${session.completed || isReadOnly() ? "disabled" : ""}
-        onblur="updateSet('${session.id}',${i},'w',this.value)">
-      <input type="number" placeholder="reps" value="${set.r || ""}"
-        ${session.completed || isReadOnly() ? "disabled" : ""}
-        onblur="updateSet('${session.id}',${i},'r',this.value)">
+        onchange="updateDate('${session.id}', this.value)">
+
+      <select ${session.completed || isReadOnly() ? "disabled" : ""}
+        onchange="updateLift('${session.id}', this.value)">
+        ${LIFTS.map(l =>
+          `<option value="${l}" ${l === session.lift ? "selected" : ""}>${l}</option>`
+        ).join("")}
+      </select>
+
+      <select ${session.completed || isReadOnly() ? "disabled" : ""}
+        onchange="updateType('${session.id}', this.value)">
+        ${WEEK_TYPES.map(t =>
+          `<option value="${t}" ${t === session.type ? "selected" : ""}>${t}</option>`
+        ).join("")}
+      </select>
     </div>
   `;
-});
 
-    // Isolation exercises
-session.isolations.forEach((iso,i) => {
-  left.innerHTML += `
-    <div class="iso">
-      <input class="iso-name"
-  placeholder="Exercise"
-  value="${iso.name || ""}"
-  ${session.completed || isReadOnly() ? "disabled" : ""}
-  onblur="updateIso('${session.id}',${i},'name',this.value)">
-      <div class="iso-row">
-        <input placeholder="Sets" value="${iso.sets||""}"
+  /* SETS */
+  session.sets.forEach((set, i) => {
+    left.innerHTML += `
+      <div class="set-row">
+        <span>${i + 1}</span>
+        <input type="number"
+          placeholder="kg"
+          value="${set.w || ""}"
           ${session.completed || isReadOnly() ? "disabled" : ""}
-          onblur="updateIso('${session.id}',${i},'sets',this.value)">
-        <input placeholder="Reps" value="${iso.reps||""}"
+          onblur="updateSet('${session.id}', ${i}, 'w', this.value)">
+
+        <input type="number"
+          placeholder="reps"
+          value="${set.r || ""}"
           ${session.completed || isReadOnly() ? "disabled" : ""}
-          onblur="updateIso('${session.id}',${i},'reps',this.value)">
-        <input placeholder="Weight" value="${iso.weight||""}"
-          ${session.completed || isReadOnly() ? "disabled" : ""}
-          onblur="updateIso('${session.id}',${i},'weight',this.value)">
+          onblur="updateSet('${session.id}', ${i}, 'r', this.value)">
       </div>
+    `;
+  });
+
+  /* ISOLATIONS */
+  session.isolations.forEach((iso, i) => {
+    left.innerHTML += `
+      <div class="iso">
+        <input class="iso-name"
+          placeholder="Exercise"
+          value="${iso.name || ""}"
+          ${session.completed || isReadOnly() ? "disabled" : ""}
+          onblur="updateIso('${session.id}', ${i}, 'name', this.value)">
+
+        <div class="iso-row">
+          <input placeholder="Sets"
+            value="${iso.sets || ""}"
+            ${session.completed || isReadOnly() ? "disabled" : ""}
+            onblur="updateIso('${session.id}', ${i}, 'sets', this.value)">
+
+          <input placeholder="Reps"
+            value="${iso.reps || ""}"
+            ${session.completed || isReadOnly() ? "disabled" : ""}
+            onblur="updateIso('${session.id}', ${i}, 'reps', this.value)">
+
+          <input placeholder="Weight"
+            value="${iso.weight || ""}"
+            ${session.completed || isReadOnly() ? "disabled" : ""}
+            onblur="updateIso('${session.id}', ${i}, 'weight', this.value)">
+        </div>
+      </div>
+    `;
+  });
+
+  /* ADD ISOLATION BUTTON (FIXED - NO NESTED BUTTONS) */
+  if (!session.completed && !isReadOnly()) {
+    const btn = document.createElement("button");
+    btn.textContent = "+ Add Exercise";
+    btn.onclick = () => addIsolation(session.id);
+    left.appendChild(btn);
+  }
+
+  /* VOLUME */
+  const volume = calculateSessionVolume(session);
+  const vol = document.createElement("div");
+  vol.className = "volume";
+  vol.innerHTML = `Volume: <strong>${volume} kg</strong>`;
+  left.appendChild(vol);
+
+  /* ================= MIDDLE (PB) ================= */
+  const pbSlot = document.createElement("div");
+  pbSlot.className = isPB(session) ? "pb-badge" : "pb-badge-slot";
+
+  if (isPB(session)) {
+    pbSlot.textContent = "🏆";
+
+    if (session.pbHit) {
+      for (let i = 0; i < 12; i++) {
+        const conf = document.createElement("div");
+        conf.className = "confetti";
+        conf.style.background = ["#f59e0b", "#10b981", "#6366f1", "#ef4444"][i % 4];
+        conf.style.animationDelay = (Math.random() * 0.3) + "s";
+        pbSlot.appendChild(conf);
+      }
+      delete session.pbHit;
+      saveDB();
+    }
+  }
+
+  /* ================= RIGHT ================= */
+  const right = document.createElement("div");
+  right.className = "prev";
+
+  right.innerHTML = `
+    <strong>Previous session</strong>
+    <table style="width:100%; font-size:0.8rem; margin-top:6px;">
+      <thead>
+        <tr style="text-align:left; color:#6b7280;">
+          <th>Set</th><th>Weight</th><th>Reps</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  `;
+
+  const tbody = right.querySelector("tbody");
+
+  if (session._prevMain) {
+    session._prevMain.sets.forEach((set, i) => {
+      if (set.w || set.r) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${set.w || ""}</td>
+          <td>${set.r || ""}</td>
+        `;
+        tbody.appendChild(row);
+      }
+    });
+  }
+
+  /* ================= ASSEMBLE ================= */
+  wrapper.append(left, pbSlot, right);
+  card.append(wrapper);
+
+  container.appendChild(card);
+
+  /* NOTES */
+  const notesRow = document.createElement("div");
+  notesRow.className = "notes-row";
+
+  notesRow.innerHTML = `
+    <textarea
+      ${session.completed || isReadOnly() ? "disabled" : ""}
+      onblur="updateNotes('${session.id}', this.value)"
+      placeholder="Notes">${session.notes || ""}</textarea>
+
+    <div class="prev">
+      <strong>Previous Notes</strong><br>
+      ${session._prevMain?.notes || ""}
     </div>
   `;
-});
 
-left.innerHTML += `
-  <button 
-    ${!session.completed && !isReadOnly() ? `
-  <button onclick="addIsolation('${session.id}')">+ Add Exercise</button>
-` : ""}
-  </button>
-`;
-    
-// Volume (AFTER sets)
-const volume = calculateSessionVolume(session);
-left.innerHTML += `
-  <div class="volume">
-    Volume: <strong>${volume} kg</strong>
-  </div>
-`;
+  card.appendChild(notesRow);
 
-/* ---------- BUILD RIGHT (PREVIOUS) ---------- */
+  /* ACTIONS */
+  const actions = document.createElement("div");
+  actions.className = "actions";
 
-right.innerHTML = `
-  <strong>Previous equivalent session data</strong>
-  <table style="width:100%; font-size:0.8rem; margin-top:6px;">
-    <thead>
-      <tr style="text-align:left; color:#6b7280;">
-        <th>Set</th>
-        <th>Weight</th>
-        <th>Reps</th>
-      </tr>
-    </thead>
-    <tbody id="prev-${session.id}"></tbody>
-  </table>
-`;
+  actions.innerHTML = `
+    ${!session.completed && !isReadOnly() ? `<button onclick="completeSession('${session.id}')">Complete</button>` : ""}
+    ${session.completed && !isReadOnly() ? `<button onclick="editSession('${session.id}')">Edit</button>` : ""}
+    ${!isReadOnly() ? `<button class="danger" onclick="deleteSession('${session.id}')">Delete</button>` : ""}
+  `;
 
-// Main previous (mirrors sets layout)
-  if (session._prevMain) {
-  const tbody = right.querySelector(`#prev-${session.id}`);
+  card.appendChild(actions);
+}
 
-  session._prevMain.sets.forEach((set, i) => {
-    if (set.w || set.r) {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${i+1}</td>
-        <td>${set.w || ""}</td>
-        <td>${set.r || ""}</td>
-      `;
-      tbody.appendChild(row);
-    }
+  function renderMain(container) {
+  const week = getWeek();
+  week.forEach(session => {
+    buildSessionCard(session, container);
   });
 }
-
-// Isolation previous
-if (session._prevIso) {
-  right.innerHTML += `<div class="iso-title">Isolation</div>`;
-  session._prevIso.isolations.forEach(i => {
-    if (i.name) {
-      right.innerHTML += `
-        <div class="iso-block">
-          <div class="iso-name">${i.name}</div>
-          <div class="iso-sets">${i.sets} × ${i.reps} @ ${i.weight}</div>
-        </div>
-      `;
-    }
-  });
-}
-
-/* ---------- APPEND ---------- */
-
-let pbSlot = document.createElement("div");
-
-if (session.pbHit) {
-  for (let i = 0; i < 12; i++) {
-    const conf = document.createElement("div");
-    conf.className = "confetti";
-    conf.style.background = ["#f59e0b","#10b981","#6366f1","#ef4444"][i % 4];
-    conf.style.animationDelay = (Math.random() * 0.3) + "s";
-    pbSlot.appendChild(conf);
-  }
-
-  // remove flag so it doesn't replay
-  delete session.pbHit;
-  saveDB();
-}
-    
-if (isPB(session)) {
-  pbSlot.className = "pb-badge";
-  pbSlot.textContent = "🏆";
-}
-
-wrapper.append(left, pbSlot, right);
-card.append(wrapper);
-c.append(card);
-
-const notesRow = document.createElement("div");
-notesRow.className = "notes-row";
-
-notesRow.innerHTML = `
-  <textarea
-    ${session.completed || isReadOnly() ? "disabled" : ""}
-    onblur="updateNotes('${session.id}',this.value)"
-    placeholder="Notes">${session.notes || ""}</textarea>
-
-  <div class="prev">
-    <strong>Previous Notes</strong><br>
-    ${session._prevMain?.notes || ""}
-  </div>
-`;
-const actions = document.createElement("div");
-actions.className = "actions";
-
-actions.innerHTML = `
-  ${!session.completed && !isReadOnly() ? `
-    <button onclick="completeSession('${session.id}')">Complete</button>
-  ` : ""}
-
-  ${session.completed && !isReadOnly() ? `
-    <button onclick="editSession('${session.id}')">Edit</button>
-  ` : ""}
-
-  ${!isReadOnly() ? `
-    <button class="danger" onclick="deleteSession('${session.id}')">Delete</button>
-  ` : ""}
-`;
-
-card.append(actions);
-card.append(notesRow);
-  });
-  }
-                    
+  
     function estimate1RM(weight, reps){
     weight = Number(weight);
     reps = Number(reps);
@@ -1374,9 +1367,28 @@ function updateLift(id, v){
   saveDB();
   render();
 }
-function updateSet(id,i,f,v){getWeek().find(s=>s.id===id).sets[i][f]=v;saveDB();render();}
-function updateIso(id,i,f,v){getWeek().find(s=>s.id===id).isolations[i][f]=v;saveDB();render()}
-function updateNotes(id,v){getWeek().find(s=>s.id===id).notes=v;saveDB()}
+function updateSet(id, i, f, v){
+  const s = getWeek().find(s => s.id === id);
+  if (!s || !s.sets[i]) return;
+  s.sets[i][f] = v;
+  saveDB();
+  render();
+}
+
+function updateIso(id, i, f, v){
+  const s = getWeek().find(s => s.id === id);
+  if (!s || !s.isolations[i]) return;
+  s.isolations[i][f] = v;
+  saveDB();
+  render();
+}
+
+function updateNotes(id, v){
+  const s = getWeek().find(s => s.id === id);
+  if (!s) return;
+  s.notes = v;
+  saveDB();
+}
 function updateMainSets(id, v){
   const s = getWeek().find(x => x.id === id);
   if (!s) return;
@@ -1384,15 +1396,14 @@ function updateMainSets(id, v){
   saveDB();
 }
   function addIsolation(id){
-  if (isReadOnly()) return; // 🔒 prevent history edits
-
+  if (isReadOnly()) return;
   const s = getWeek().find(x => x.id === id);
-  if (!s || s.completed) return; // 🔒 prevent editing completed
-
+  if (!s || s.completed) return;
   s.isolations.push({name:"", sets:"", reps:"", weight:""});
   saveDB();
   render();
 }
+  
   let audioCtx = null;
 
 function initAudio(){
