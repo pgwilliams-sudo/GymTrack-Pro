@@ -810,7 +810,11 @@ session.isolations.forEach((iso,i) => {
 });
 
 left.innerHTML += `
-  <button onclick="addIsolation('${session.id}')">+ Add Exercise</button>
+  <button 
+    ${session.completed || isReadOnly() ? "disabled" : ""}
+    onclick="addIsolation('${session.id}')">
+    + Add Exercise
+  </button>
 `;
     
 // Volume (AFTER sets)
@@ -1307,8 +1311,10 @@ function updateMainSets(id, v){
   saveDB();
 }
   function addIsolation(id){
+  if (isReadOnly()) return; // 🔒 prevent history edits
+
   const s = getWeek().find(x => x.id === id);
-  if (!s) return;
+  if (!s || s.completed) return; // 🔒 prevent editing completed
 
   s.isolations.push({name:"", sets:"", reps:"", weight:""});
   saveDB();
