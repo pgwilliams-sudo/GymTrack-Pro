@@ -730,7 +730,12 @@ function renderMain(c){
 
 const card = document.createElement("div");
 card.className = "card";
-    
+    if (isPB(session)) {
+  const pb = document.createElement("div");
+  pb.className = "pb-badge";
+  pb.textContent = "🏆";
+  card.append(pb);
+}
 // Apply colour bar
 card.style.setProperty('--card-accent', liftColors[session.lift] || '#6366f1');
 
