@@ -39,8 +39,8 @@ body {
 }
 
 /* CARDS */
-.card {
-  background: var(--card);
+.card {  
+  background: var(--card, #ffffff);
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 12px;
@@ -86,7 +86,7 @@ body {
   width: 6px;
   height: 100%;
   border-radius: 12px 0 0 12px;
-  background: var(--primary);
+  background: var(--card-accent, var(--card));
 }
 
 /* HEADER */
@@ -106,6 +106,12 @@ body {
   font-size: 0.9rem;
 }
 
+.pb-badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+}
+  
 /* MAIN GRID */
 .session-grid {
   display: grid;
@@ -126,10 +132,13 @@ body {
 
 /* PREVIOUS SIDE */
 .prev {
-  background: #f8fafc;
-  padding: 6px;
-  border-radius: 8px;
-  font-size: 0.8rem;
+  background: #f1f5f9;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #d1d5db;
+  border-radius:8px;
+  padding:8px;
+  flex:1;
+  min-width:90px;
 }
 
 /* ISOLATION (NEW STYLE) */
@@ -253,14 +262,6 @@ button[style*="ef4444"] {
   margin-top:12px;
 }
 
-.prev {
-  background: #f1f5f9;   /* light grey */
-  border-radius:8px;
-  padding:8px;
-  flex:1;
-  min-width:90px;
-}
-
 .curr {
   flex:1;
   min-width:90px;
@@ -328,7 +329,7 @@ button[style*="ef4444"] {
     <button onclick="completeCycle()" style="background:#16a34a;color:#fff">
   Complete Cycle
 </button>
-
+    
     <button onclick="exportData()">Export</button>
     <button onclick="document.getElementById('importFile').click()">Import</button>
     <input id="importFile" type="file" accept=".json" hidden>
@@ -349,6 +350,7 @@ button[style*="ef4444"] {
     <div id="graphControls">
       <button id="weightBtn" onclick="setGraphMode('weight')">Weight</button>
       <button id="volumeBtn" onclick="setGraphMode('volume')">Volume</button>
+
     </div>
   </div>
 </div>
@@ -714,194 +716,21 @@ function renderMain(c){
     hydrateSessionFromHistory(session);
 
     const liftColors = {
-  Squat: 'var(--primary-soft)',        // blue
-  Bench: 'var(--secondary-soft)',      // green
-  Deadlift: 'var(--accent-soft)',      // amber
-  Row: '#e0f2fe',                      // light sky blue
-  "Overhead Press": '#f3e8ff',         // light purple
-  Open: '#f1f5f9'                      // neutral grey
-};
-
-const card = document.createElement("div");
-
-if (isPB(session)) {
-  const badge = document.createElement("div");
-  badge.className = "pb-badge";
-  badge.innerText = "🏆";
-  card.appendChild(badge);
-}
-    
-const liftColors = {
   Squat: 'var(--primary)',
   Bench: 'var(--secondary)',
   Deadlift: 'var(--accent)',
-  Row: '#0ea5e9',
-  "Overhead Press": '#a855f7',
-  Open: '#64748b'
+  Row: '#06b6d4',
+  "Overhead Press": '#8b5cf6',
+  Open: '#9ca3af'
 };
 
-card.classList.add("lift-" + session.lift.replaceAll(" ",""));
-
-    if (isPB(session)) {
-      card.style.border = "2px solid gold";
-    }
-
-    card.className = "card" + (session.completed ? " locked" : "");
-
-    const prev = document.createElement("div");
-    prev.className = "prev";
-    prev.innerHTML = "<strong>Previous</strong><br>";
-
-if (isPB(session)) {
-  prev.innerHTML += "🏆 <strong>PB!</strong><br>";
-}
-  if (session._prevMain) {
-  prev.innerHTML += "<em>Main:</em><br>";
-
-  const isGVT = session.type === "GVT";
-
-  if (isGVT && session._prevMain.mainSets) {
-    const firstSet = session._prevMain.sets.find(s => s.w || s.r);
-
-    if (firstSet) {
-      prev.innerHTML += `${session._prevMain.mainSets} @ ${firstSet.w || ""} × ${firstSet.r || ""}<br>`;
-    }
-  } else {
-    session._prevMain.sets.forEach(set => {
-      if (set.w || set.r) {
-        prev.innerHTML += `${set.w || ""} × ${set.r || ""}<br>`;
-      }
-    });
-  }
-
-  if (session._prevMain.notes) {
-    prev.innerHTML += "<em>Notes:</em><br>";
-    prev.innerHTML += `${session._prevMain.notes}<br>`;
-  }
-}
-
-  if (session._prevIso) {
-  prev.innerHTML += "<em>Isolation:</em><br>";
-  session._prevIso.isolations.forEach(i => {
-    if (i.name) {
-      prev.innerHTML += `${i.name} ${i.sets || ""}×${i.reps || ""}@${i.weight || ""}<br>`;
-    }
-  });
-}
+const card = document.createElement("div");
+card.className = "card";
     
-    const curr = document.createElement("div");
-    curr.className = "curr";
+// Apply colour bar
+card.style.setProperty('--card-accent', liftColors[session.lift] || '#6366f1');
 
-curr.innerHTML += `
-  <div style="margin-bottom:6px">
-    <input type="date"
-      value="${session.date || ""}"
-      ${session.completed || isReadOnly() ? "disabled" : ""}
-      onchange="updateDate('${session.id}', this.value)">
-  </div>
-`;
     
-    curr.innerHTML += `
-      <select ${session.completed || isReadOnly() ? "disabled" : ""}
-        onchange="updateLift('${session.id}',this.value)">
-        ${LIFTS.map(l => `<option ${l===session.lift?"selected":""}>${l}</option>`).join("")}
-      </select>
-    `;
-
-curr.innerHTML += `
-  <div style="margin-bottom:6px">
-    <select
-      ${session.completed || isReadOnly() ? "disabled" : ""}
-      onchange="updateType('${session.id}', this.value)">
-      ${WEEK_TYPES.map(t => `
-        <option value="${t}" ${t === session.type ? "selected" : ""}>
-          ${t}
-        </option>
-      `).join("")}
-    </select>
-  </div>
-`;
-    const volume = calculateSessionVolume(session);
-
-curr.innerHTML += `
-  <div style="margin-top:6px;font-size:0.8rem;color:var(--subtext)">
-    Volume: <strong>${volume} kg</strong>
-  </div>
-`;
-    
-const isGVT = session.type === "GVT";
-
-if (isGVT) {
-  curr.innerHTML += `
-    <div class="set">
-      Sets
-      <input type="number" placeholder="e.g. 10"
-        value="${session.mainSets || ""}"
-        ${session.completed || isReadOnly() ? "disabled" : ""}
-        onblur="updateMainSets('${session.id}', this.value)">
-    </div>
-  `;
-}
-  if (isGVT) {
-  curr.innerHTML += `
-    <div style="margin-top:8px;padding:6px;background:var(--accent-soft);border-radius:6px">
-      <strong>GVT Timer</strong><br>
-      Time: ${session.timer || 0}s<br>
-      Sets: ${session.gvtCount || 0} / 10<br>
-      <button onclick="initAudio(); startTimer('${session.id}')">Start</button>
-      <button onclick="resetTimer('${session.id}')">Reset</button>
-    </div>
-  `;
-}
-    session.sets.forEach((set,i) => {
-      curr.innerHTML += `
-        <div class="set">
-          ${i+1}
-          <input type="number" placeholder="kg" value="${set.w}" ${session.completed || isReadOnly() ? "disabled" : ""}
-  onblur="updateSet('${session.id}',${i},'w',this.value)">
-<input type="number" placeholder="reps" value="${set.r}" ${session.completed?"disabled":""}
-  onblur="updateSet('${session.id}',${i},'r',this.value)">
-        </div>
-      `;
-    });
-
-    session.isolations.forEach((iso,i) => {
-  left.innerHTML += `
-    <div class="iso-block">
-      <input class="iso-name" placeholder="Exercise"
-        value="${iso.name||""}"
-        ${session.completed || isReadOnly() ? "disabled" : ""}
-        onblur="updateIso('${session.id}',${i},'name',this.value)">
-
-      <div class="set-row">
-        <input placeholder="Sets" value="${iso.sets||""}"
-          ${session.completed || isReadOnly() ? "disabled" : ""}
-          onblur="updateIso('${session.id}',${i},'sets',this.value)">
-        <input placeholder="Reps" value="${iso.reps||""}"
-          ${session.completed || isReadOnly() ? "disabled" : ""}
-          onblur="updateIso('${session.id}',${i},'reps',this.value)">
-        <input placeholder="Weight" value="${iso.weight||""}"
-          ${session.completed || isReadOnly() ? "disabled" : ""}
-          onblur="updateIso('${session.id}',${i},'weight',this.value)">
-      </div>
-    </div>
-  `;
-});
-
-  curr.innerHTML += `
-  <button onclick="addIsolation('${session.id}')">+ Add Exercise</button>
-`;
-
-    curr.innerHTML += `
-      <textarea ${session.completed || isReadOnly() ? "disabled" : ""}
-        onblur="updateNotes('${session.id}',this.value)">${session.notes}</textarea>
-    `;
-
-    curr.innerHTML += session.completed
-      ? `<button onclick="editSession('${session.id}')">Edit</button>`
-      : `<button onclick="completeSession('${session.id}')">Complete</button>
-         <button onclick="deleteSession('${session.id}')">Delete</button>`;
-
     const wrapper = document.createElement("div");
 wrapper.className = "session-grid";
 
@@ -910,7 +739,7 @@ const left = document.createElement("div");
 
 /* RIGHT = PREVIOUS */
 const right = document.createElement("div");
-right.className = "prev-box";
+right.className = "prev";
 
 /* ---------- BUILD LEFT (CURRENT) ---------- */
 
@@ -952,6 +781,34 @@ session.sets.forEach((set,i) => {
   `;
 });
 
+    // Isolation exercises
+session.isolations.forEach((iso,i) => {
+  left.innerHTML += `
+    <div class="iso">
+      <input class="iso-name"
+  placeholder="Exercise"
+  value="${iso.name || ""}"
+  ${session.completed || isReadOnly() ? "disabled" : ""}
+  onblur="updateIso('${session.id}',${i},'name',this.value)">
+      <div class="iso-row">
+        <input placeholder="Sets" value="${iso.sets||""}"
+          ${session.completed || isReadOnly() ? "disabled" : ""}
+          onblur="updateIso('${session.id}',${i},'sets',this.value)">
+        <input placeholder="Reps" value="${iso.reps||""}"
+          ${session.completed || isReadOnly() ? "disabled" : ""}
+          onblur="updateIso('${session.id}',${i},'reps',this.value)">
+        <input placeholder="Weight" value="${iso.weight||""}"
+          ${session.completed || isReadOnly() ? "disabled" : ""}
+          onblur="updateIso('${session.id}',${i},'weight',this.value)">
+      </div>
+    </div>
+  `;
+});
+
+left.innerHTML += `
+  <button onclick="addIsolation('${session.id}')">+ Add Exercise</button>
+`;
+    
 // Volume (AFTER sets)
 const volume = calculateSessionVolume(session);
 left.innerHTML += `
@@ -999,7 +856,24 @@ if (session._prevIso) {
 wrapper.append(left, right);
 card.append(wrapper);
 c.append(card);
-  
+
+const notesRow = document.createElement("div");
+notesRow.className = "notes-row";
+
+notesRow.innerHTML = `
+  <textarea
+    ${session.completed || isReadOnly() ? "disabled" : ""}
+    onblur="updateNotes('${session.id}',this.value)"
+    placeholder="Notes">${session.notes || ""}</textarea>
+
+  <div class="prev">
+    <strong>Previous Notes</strong><br>
+    ${session._prevMain?.notes || ""}
+  </div>
+`;
+
+card.append(notesRow);
+    
     function estimate1RM(weight, reps){
     weight = Number(weight);
     reps = Number(reps);
@@ -1154,7 +1028,7 @@ function processWeek(week) {
 
   
 function renderHistory(container){
-  const lifts = ["Squat","Bench","Deadlift"];
+  const lifts = ["Squat","Bench","Deadlift","Row","Overhead Press"];
   
   lifts.forEach(lift => {
 
@@ -1394,7 +1268,7 @@ function updateLift(id, v){
   render();
 }
 function updateSet(id,i,f,v){getWeek().find(s=>s.id===id).sets[i][f]=v;saveDB();render();}
-function updateIso(id,i,f,v){getWeek().find(s=>s.id===id).isolations[i][f]=v;saveDB()}
+function updateIso(id,i,f,v){getWeek().find(s=>s.id===id).isolations[i][f]=v;saveDB();render()}
 function updateNotes(id,v){getWeek().find(s=>s.id===id).notes=v;saveDB()}
 function updateMainSets(id, v){
   const s = getWeek().find(x => x.id === id);
