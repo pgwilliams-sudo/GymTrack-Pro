@@ -229,6 +229,12 @@ body {
   filter: brightness(0.95);
 }
 
+  .week-btn.completed {
+  background: #16a34a;
+  color: #fff;
+  font-weight: 600;
+}
+  
 /* INPUTS */
 select,input,textarea,button {
   padding:6px;
@@ -449,6 +455,18 @@ function getWeek(){
   return weeks[currentWeek];
 }
 
+function isWeekComplete(weekNum){
+  const weeks = getActiveWeeks();
+
+  for (let w = weekNum + 1; w <= MAX_WEEKS; w++) {
+    if (weeks[w] && weeks[w].length > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+  
   function isReadOnly(){
   return viewing !== "current";
 }
@@ -1593,13 +1611,26 @@ function changeWeek(d){
 }
 
 function renderWeekButtons(){
-  const g=document.getElementById("weekGrid");
-  g.innerHTML="";
-  for(let i=1;i<=MAX_WEEKS;i++){
-    const b=document.createElement("button");
-    b.textContent=`W${i}`;
-    b.className="week-btn "+(i===currentWeek?"active":"inactive");
-    b.onclick=()=>{currentWeek=i;render()};
+  const g = document.getElementById("weekGrid");
+  g.innerHTML = "";
+
+  for (let i = 1; i <= MAX_WEEKS; i++) {
+    const b = document.createElement("button");
+    b.textContent = `W${i}`;
+
+    if (i === currentWeek) {
+      b.className = "week-btn active";
+    } else if (isWeekComplete(i)) {
+      b.className = "week-btn completed";
+    } else {
+      b.className = "week-btn inactive";
+    }
+
+    b.onclick = () => {
+      currentWeek = i;
+      render();
+    };
+
     g.append(b);
   }
 }
