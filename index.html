@@ -606,6 +606,20 @@ function getPB(lift){
 
   return total;
 }
+ 
+  function getTargetSetCount(session){
+  return session.type === "GVT" ? 10 : 5;
+}
+
+function ensureMainSetCount(session){
+  const target = getTargetSetCount(session);
+  const current = Array.isArray(session.sets) ? session.sets : [];
+
+  session.sets = Array.from({ length: target }, (_, i) => ({
+    w: current[i]?.w || "",
+    r: current[i]?.r || ""
+  }));
+}
   
 function hydrateSessionFromHistory(session) {
   const prevMain = getPreviousSession(session);
@@ -682,12 +696,13 @@ function hydrateSessionFromHistory(session) {
 
 function addSession(){
   if (viewing !== "current") return;
-  getWeek().unshift({
+
+  const newSession = {
     id: crypto.randomUUID(),
     lift: "Squat",
-    type: "Core", // ✅ NEW
+    type: "Core",
     mainSets: "",
-    sets: Array.from({length:5},()=>({w:"",r:""})),
+    sets: [],
     isolations: [],
     isolationLift: null,
     notes: "",
@@ -696,32 +711,52 @@ function addSession(){
     timerRunning: false,
     gvtCount: 0,
     date: new Date().toISOString().split("T")[0]
-  });
+  };
+
+  ensureMainSetCount(newSession);
+
+  getWeek().unshift(newSession);
   saveDB();
   render();
 }
 
   function normaliseSession(s){
-  s.sets = s.sets || [];
-  s.isolations = s.isolations || [];
+  s.sets = Array.isArray(s.sets) ? s.sets : [];
+  s.isolations = Array.isArray(s.isolations) ? s.isolations : [];
   s.notes = s.notes || "";
+  s.mainSets = s.mainSets || "";
+  s.gvtCount = Number(s.gvtCount) || 0;
+  s.timer = Number(s.timer) || 0;
+  s.timerRunning = !!s.timerRunning;
 
   if (!s.date) {
     s.date = new Date().toISOString().split("T")[0];
   }
-if (!s.type) {
-  s.type = "Core";
-}
+
+  if (!s.type) {
+    s.type = "Core";
+  }
+
+  ensureMainSetCount(s);
+
   return s;
 }
 
   function updateType(id, value){
   const s = getWeek().find(x => x.id === id);
   if (!s) return;
-
-  if (s.completed) return; // 🔒 lock if done
+  if (s.completed) return;
 
   s.type = value;
+  ensureMainSetCount(s);
+
+  if (value !== "GVT") {
+    s.timerRunning = false;
+    s.timer = 0;
+    s.gvtCount = 0;
+    clearInterval(interval);
+  }
+
   saveDB();
   render();
 }
@@ -826,6 +861,44 @@ function buildSessionCard(session, container) {
     `;
   });
 
+  /* GVT TIMER */
+  if (session.type === "GVT") {
+    const timerBox = document.createElement("div");
+    timerBox.className = "prev";
+    timerBox.style.marginTop = "8px";
+
+    timerBox.innerHTML = `
+      <strong>GVT Timer</strong><br>
+      <div style="margin-top:6px; font-size:0.9rem;">
+        Time: <strong>${session.timer || 0}s</strong>
+      </div>
+      <div style="margin-top:4px; font-size:0.85rem;">
+        Completed sets: <strong>${session.gvtCount || 0}/10</strong>
+      </div>
+    `;
+
+    if (!session.completed && !isReadOnly()) {
+      const timerActions = document.createElement("div");
+      timerActions.style.display = "flex";
+      timerActions.style.gap = "6px";
+      timerActions.style.marginTop = "8px";
+
+      const startBtn = document.createElement("button");
+      startBtn.textContent = session.timerRunning ? "Running..." : "Start Timer";
+      startBtn.disabled = session.timerRunning;
+      startBtn.onclick = () => startTimer(session.id);
+
+      const resetBtn = document.createElement("button");
+      resetBtn.textContent = "Reset Timer";
+      resetBtn.onclick = () => resetTimer(session.id);
+
+      timerActions.append(startBtn, resetBtn);
+      timerBox.appendChild(timerActions);
+    }
+
+    left.appendChild(timerBox);
+  }
+  
   /* ISOLATIONS */
   session.isolations.forEach((iso, i) => {
     left.innerHTML += `
@@ -1446,48 +1519,48 @@ function updateDate(id, value){
   
 function startTimer(id){
   initAudio();
+
   const s = getWeek().find(x => x.id === id);
   if (!s || s.timerRunning) return;
 
+  clearInterval(interval);
+
   s.timerRunning = true;
-  s.timer = 90;
+  s.timer = s.timer > 0 ? s.timer : 90;
 
   interval = setInterval(() => {
-  s.timer--;
+    s.timer--;
 
-  /* 🔔 10 second cue */
-  if (s.timer === 10) {
-    beep(600, 100);
-    setTimeout(() => beep(600, 100), 150);
-  }
-
-  /* 🔊 Countdown 3,2,1 */
-  if (s.timer === 3) beep(900, 120);
-  if (s.timer === 2) beep(900, 120);
-  if (s.timer === 1) beep(1400, 250);
-
-  if (s.timer <= 0) {
-    s.gvtCount = (s.gvtCount || 0) + 1;
-
-    if (s.gvtCount >= 10) {
-      clearInterval(interval);
-      s.timerRunning = false;
-      s.timer = 0;
-      saveDB();
-      render();
-      return;
+    if (s.timer === 10) {
+      beep(600, 100);
+      setTimeout(() => beep(600, 100), 150);
     }
 
-    s.timer = 90;
-  }
+    if (s.timer === 3) beep(900, 120);
+    if (s.timer === 2) beep(900, 120);
+    if (s.timer === 1) beep(1400, 250);
 
-  saveDB();
+    if (s.timer <= 0) {
+      s.gvtCount = (s.gvtCount || 0) + 1;
 
-  if (s.timer % 2 === 0) {
-    render();
-  }
+      if (s.gvtCount >= 10) {
+        clearInterval(interval);
+        s.timerRunning = false;
+        s.timer = 0;
+        saveDB();
+        render();
+        return;
+      }
 
-}, 1000);
+      s.timer = 90;
+    }
+
+    saveDB();
+
+    if (s.timer % 2 === 0) {
+      render();
+    }
+  }, 1000);
 }
 
 function resetTimer(id){
