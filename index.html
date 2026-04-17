@@ -36,6 +36,11 @@ body {
   color: var(--text);
   padding:10px;
   margin:0;
+  overflow-x: hidden;
+}
+
+  * {
+  box-sizing: border-box;
 }
 
 /* CARDS */
@@ -47,6 +52,8 @@ body {
   border: 1px solid #e5e7eb;
   box-shadow: 0 4px 10px rgba(0,0,0,.06);
   transition: 0.2s;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .card:hover {
@@ -144,9 +151,21 @@ body {
 /* MAIN GRID */
 .session-grid {
   display: grid;
-  grid-template-columns: 1fr 40px 1fr; /* middle slot for trophy */
+  grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
+  width: 100%;
+}
+
+  .session-grid > div {
+  min-width: 0;
+}
+
+.top-row,
+.set-row,
+.iso-row,
+.notes-row {
+  min-width: 0;
 }
 
   
@@ -166,12 +185,26 @@ body {
   background: #f1f5f9;
   border: 1px solid #e5e7eb;
   border-left: 3px solid #d1d5db;
-  border-radius:8px;
-  padding:8px;
-  flex:1;
-  min-width:90px;
+  border-radius: 8px;
+  padding: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: hidden;
+  font-size: 0.85rem;
 }
 
+  .prev table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.prev th,
+.prev td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+  
 /* ISOLATION (NEW STYLE) */
 .iso {
   background: transparent;
@@ -242,20 +275,43 @@ select,input,textarea,button {
   font-size:0.85rem;
 }
 
-input, textarea, select {
-  border:1px solid #e5e7eb;
-  background:#fff;
-  transition:0.2s;
-}
-
 input:focus, textarea:focus, select:focus {
   outline:none;
   border-color: var(--primary);
   box-shadow: 0 0 0 2px var(--primary-soft);
 }
 
-input[type=number]{width:70px;}
+input, textarea, select {
+  border:1px solid #e5e7eb;
+  background:#fff;
+  transition:0.2s;
+  max-width: 100%;
+  min-width: 0;
+}
+
+input[type=number] {
+  width: 100%;
+  max-width: 70px;
+  min-width: 0;
+}
+  
 textarea{resize:none;width:100%;}
+
+  @media (max-width: 700px) {
+  .notes-row {
+    grid-template-columns: 1fr;
+  }
+
+  .session-grid {
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .card {
+    padding: 10px;
+    padding-left: 12px;
+  }
+}
 
 /* BUTTONS */
 
@@ -310,7 +366,7 @@ button[style*="ef4444"] {
 
 .curr {
   flex:1;
-  min-width:90px;
+  min-width: 0;
 }
 
 .prev strong {
