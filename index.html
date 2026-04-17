@@ -102,14 +102,35 @@ body {
   color: var(--subtext);
 }
 
-.pb-badge {
-  font-size: 0.9rem;
+  .pb-badge {
+  position: absolute;
+  top: 10px;
+  right: 120px; /* pushes it left of previous box */
+  font-size: 28px;
+  animation: popIn 0.4s ease;
 }
 
-.pb-badge {
+@keyframes popIn {
+  0% { transform: scale(0.2) rotate(-20deg); opacity: 0; }
+  60% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+  100% { transform: scale(1); rotate: 0; }
+}
+
+/* 🎉 Confetti */
+.confetti {
   position: absolute;
-  top: 8px;
-  right: 10px;
+  width: 6px;
+  height: 6px;
+  background: red;
+  top: 20px;
+  right: 130px;
+  opacity: 0.8;
+  animation: confetti-fall 0.8s ease-out forwards;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(40px) rotate(360deg); opacity: 0; }
 }
   
 /* MAIN GRID */
@@ -735,6 +756,16 @@ card.className = "card";
   pb.className = "pb-badge";
   pb.textContent = "🏆";
   card.append(pb);
+
+  // 🎉 Confetti burst
+  for (let i = 0; i < 12; i++) {
+    const conf = document.createElement("div");
+    conf.className = "confetti";
+    conf.style.background = ["#f59e0b","#10b981","#6366f1","#ef4444"][i % 4];
+    conf.style.left = (80 + Math.random() * 40) + "%";
+    conf.style.animationDelay = (Math.random() * 0.3) + "s";
+    card.append(conf);
+  }
 }
 // Apply colour bar
 card.style.setProperty('--card-accent', liftColors[session.lift] || '#6366f1');
@@ -832,19 +863,33 @@ left.innerHTML += `
 
 /* ---------- BUILD RIGHT (PREVIOUS) ---------- */
 
-right.innerHTML = `<strong>Previous</strong><br>`;
+right.innerHTML = `
+  <strong>Previous equivalent session data</strong>
+  <table style="width:100%; font-size:0.8rem; margin-top:6px;">
+    <thead>
+      <tr style="text-align:left; color:#6b7280;">
+        <th>Set</th>
+        <th>Weight</th>
+        <th>Reps</th>
+      </tr>
+    </thead>
+    <tbody id="prev-${session.id}"></tbody>
+  </table>
+`;
 
 // Main previous (mirrors sets layout)
-if (session._prevMain) {
-  session._prevMain.sets.forEach((set,i) => {
+  if (session._prevMain) {
+  const tbody = right.querySelector(`#prev-${session.id}`);
+
+  session._prevMain.sets.forEach((set, i) => {
     if (set.w || set.r) {
-      right.innerHTML += `
-        <div class="set-row">
-          <span>${i+1}</span>
-          <span>${set.w || ""}</span>
-          <span>${set.r || ""}</span>
-        </div>
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${i+1}</td>
+        <td>${set.w || ""}</td>
+        <td>${set.r || ""}</td>
       `;
+      tbody.appendChild(row);
     }
   });
 }
