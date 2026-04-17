@@ -468,12 +468,12 @@ function setGraphMode(mode){
     return db.weeks;
   }
 
-function getWeeksForLookup(){
-  return getActiveWeeks();
-}
-    
   const cycle = db.history[viewing];
   return cycle ? cycle.weeks : {};
+}
+
+function getWeeksForLookup(){
+  return getActiveWeeks();
 }
 
 function updateCycleDropdown(){
