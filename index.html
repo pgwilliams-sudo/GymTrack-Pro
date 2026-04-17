@@ -1440,10 +1440,20 @@ function updateLift(id, v){
   saveDB();
   render();
 }
+  
 function updateSet(id, i, f, v){
   const s = getWeek().find(s => s.id === id);
   if (!s || !s.sets[i]) return;
+
   s.sets[i][f] = v;
+
+  // For GVT, copy the edited value forward into all later sets
+  if (s.type === "GVT") {
+    for (let x = i + 1; x < s.sets.length; x++) {
+      s.sets[x][f] = v;
+    }
+  }
+
   saveDB();
   render();
 }
