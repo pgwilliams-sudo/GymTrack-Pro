@@ -811,9 +811,9 @@ session.isolations.forEach((iso,i) => {
 
 left.innerHTML += `
   <button 
-    ${session.completed || isReadOnly() ? "disabled" : ""}
-    onclick="addIsolation('${session.id}')">
-    + Add Exercise
+    ${!session.completed && !isReadOnly() ? `
+  <button onclick="addIsolation('${session.id}')">+ Add Exercise</button>
+` : ""}
   </button>
 `;
     
