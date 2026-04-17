@@ -304,7 +304,11 @@ button[style*="ef4444"] {
   margin-left:10px;
 }
 
-
+.actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+}
   
 </style>    
 </head>
@@ -871,7 +875,24 @@ notesRow.innerHTML = `
     ${session._prevMain?.notes || ""}
   </div>
 `;
+const actions = document.createElement("div");
+actions.className = "actions";
 
+actions.innerHTML = `
+  ${!session.completed && !isReadOnly() ? `
+    <button onclick="completeSession('${session.id}')">Complete</button>
+  ` : ""}
+
+  ${session.completed && !isReadOnly() ? `
+    <button onclick="editSession('${session.id}')">Edit</button>
+  ` : ""}
+
+  ${!isReadOnly() ? `
+    <button class="danger" onclick="deleteSession('${session.id}')">Delete</button>
+  ` : ""}
+`;
+
+card.append(actions);
 card.append(notesRow);
   });
   }
