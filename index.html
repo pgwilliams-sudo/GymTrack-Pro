@@ -293,6 +293,29 @@ body {
 
 /* HEADER */
 
+.hidden-header {
+  display: none;
+}
+
+.floating-header-toggle {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 8px;
+}
+
+.floating-header-toggle button {
+  padding: 8px 12px;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.12);
+}
+
+.hidden {
+  display: none !important;
+}
+  
   .pb-badge {
   font-size: 28px;
   display: flex;
@@ -331,6 +354,8 @@ body {
   0% { transform: translateY(0) scale(1); opacity: 1; }
   100% { transform: translateY(40px) scale(0.6); opacity: 0; }
 }
+
+
   
 /* MAIN GRID */
 .session-grid {
@@ -588,10 +613,6 @@ button[style*="ef4444"] {
 .prev strong {
   color: var(--subtext);
 }
-  
-
-/* HIDDEN */
-.hidden {display:none;}
 
 /* STATS */
 .stats-week {
@@ -670,6 +691,10 @@ button[style*="ef4444"] {
   </div>
 </div>
 
+  <div id="showHeaderBtn" class="floating-header-toggle hidden">
+  <button onclick="showHeader()">Show Header</button>
+</div>
+
 <!-- MAIN -->
 <div id="sessions"></div>
 
@@ -684,6 +709,8 @@ let currentWeek = 1;
 
 let currentView = "main";
 
+let headerHidden = false;
+  
 function setView(view){
   currentView = view;
   render();
@@ -709,6 +736,24 @@ const WEEK_TYPES = ["GVT","Core","Pause","Tempo","Other"];
 
 /* ================= HELPERS ================= */
 
+function hideHeader() {
+  headerHidden = true;
+  const header = document.querySelector('.app-header');
+  const showBtn = document.getElementById('showHeaderBtn');
+
+  if (header) header.classList.add('hidden-header');
+  if (showBtn) showBtn.classList.remove('hidden');
+}
+
+function showHeader() {
+  headerHidden = false;
+  const header = document.querySelector('.app-header');
+  const showBtn = document.getElementById('showHeaderBtn');
+
+  if (header) header.classList.remove('hidden-header');
+  if (showBtn) showBtn.classList.add('hidden');
+}
+  
 function getWeek(){
   const weeks = getActiveWeeks();
 
@@ -998,9 +1043,13 @@ function addSession(){
 
   ensureMainSetCount(newSession);
 
+  currentView = "main";
+  viewing = "current";
   getWeek().unshift(newSession);
+
   saveDB();
   render();
+  hideHeader();
 }
 
   function normaliseSession(s){
@@ -1052,27 +1101,32 @@ function deleteSession(id){
 }
 
 function completeSession(id){
-  const s = getWeek().find(x=>x.id===id);
+  const s = getWeek().find(x => x.id === id);
+  if (!s) return;
+
   s.completed = true;
 
   if (!s.date) {
     s.date = new Date().toISOString();
   }
 
-  // 🎉 mark for one-time animation
   if (isPB(s)) {
     s.pbHit = true;
   }
 
   saveDB();
   render();
+  showHeader();
 }
 
 function editSession(id){
-  const s = getWeek().find(x=>x.id===id);
+  const s = getWeek().find(x => x.id === id);
+  if (!s) return;
+
   s.completed = false;
   saveDB();
   render();
+  hideHeader();
 }
 
    // ---- RENDER ----
@@ -1774,6 +1828,18 @@ if (weightBtn && volumeBtn) {
     renderProgress(c);
   } else if (currentView === "history") {
     renderHistory(c);
+  }
+
+    if (headerHidden) {
+    const header = document.querySelector('.app-header');
+    const showBtn = document.getElementById('showHeaderBtn');
+    if (header) header.classList.add('hidden-header');
+    if (showBtn) showBtn.classList.remove('hidden');
+  } else {
+    const header = document.querySelector('.app-header');
+    const showBtn = document.getElementById('showHeaderBtn');
+    if (header) header.classList.remove('hidden-header');
+    if (showBtn) showBtn.classList.add('hidden');
   }
   
 }
