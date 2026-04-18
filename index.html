@@ -77,6 +77,141 @@ body {
   margin-top:8px;
 }
 
+  .app-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.header-top {
+  display: grid;
+  grid-template-columns: 72px 72px;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.logo-tile {
+  min-height: 72px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px;
+  font-weight: 700;
+}
+
+.add-session-btn {
+  min-height: 72px;
+  border-radius: 14px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.header-week-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.week-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.nav-btn {
+  min-height: 44px;
+  font-size: 1rem;
+}
+
+.header-cycle-row {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+
+.cycle-pill {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+  padding: 6px 8px;
+}
+
+.cycle-select,
+.complete-cycle-btn {
+  min-height: 44px;
+}
+
+.complete-cycle-btn {
+  background: #16a34a;
+  color: #fff;
+}
+
+.header-utility-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.header-view-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+
+.history-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+#graphControls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .header-cycle-row {
+    grid-template-columns: 1fr;
+  }
+
+  .header-utility-row,
+  .header-view-row,
+  .history-controls,
+  #graphControls {
+    width: 100%;
+  }
+
+  .header-utility-row button,
+  .header-view-row > button,
+  .history-controls > button,
+  #graphControls button {
+    flex: 1 1 auto;
+  }
+}
+
 /* ===== CARD LAYOUT UPGRADE ===== */
 
 .card {
@@ -420,45 +555,53 @@ button[style*="ef4444"] {
 <body>
 
 <!-- HEADER -->
-<div class="card">
-  <h2>GymTrack</h2>
-<div>
-  <strong>Cycle:</strong> <span id="cycleNumber"></span>
-</div>
-  <div class="row">
-    <button onclick="changeWeek(-1)">◀</button>
-    <select id="cycleSelect" onchange="switchCycle(this.value)">
-  <option value="current">Current Cycle</option>
-</select>
-    <strong id="weekTitle">Week 1</strong>
-    <button onclick="changeWeek(1)">▶</button>
+<div class="card app-header">
+  <div class="header-top">
+    <div class="logo-tile">
+      <h2>GymTrack</h2>
+    </div>
 
-    <button onclick="addSession()">Add Session</button>
-    <button onclick="completeCycle()" style="background:#16a34a;color:#fff">
-  Complete Cycle
-</button>
-    
+    <button class="add-session-btn" onclick="addSession()">Add<br>Session</button>
+  </div>
+
+  <div class="header-week-row">
+    <button class="nav-btn" onclick="changeWeek(-1)">◀</button>
+    <strong id="weekTitle" class="week-display">Week 1</strong>
+    <button class="nav-btn" onclick="changeWeek(1)">▶</button>
+  </div>
+
+  <div class="header-cycle-row">
+    <div class="cycle-pill">
+      <strong>Cycle:</strong> <span id="cycleNumber"></span>
+    </div>
+
+    <select id="cycleSelect" class="cycle-select" onchange="switchCycle(this.value)">
+      <option value="current">Current Cycle</option>
+    </select>
+
+    <button class="complete-cycle-btn" onclick="completeCycle()">Complete Cycle</button>
+  </div>
+
+  <div class="header-utility-row">
     <button onclick="exportData()">Export</button>
     <button onclick="document.getElementById('importFile').click()">Import</button>
     <input id="importFile" type="file" accept=".json" hidden>
-
     <button onclick="resetAll()" class="danger">Reset</button>
   </div>
 
-  <div id="weekGrid" class="row" style="margin-top:8px"></div>
-</div>
+  <div id="weekGrid" class="week-grid" style="margin-top:8px"></div>
 
-  <div class="row" style="margin-top:8px; align-items:flex-start;">
-  <button onclick="setView('main')">Main</button>
-  <button onclick="setView('progress')">Progress</button>
+  <div class="header-view-row">
+    <button onclick="setView('main')">Main</button>
+    <button onclick="setView('progress')">Progress</button>
 
-  <div id="historyBlock">
-    <button onclick="setView('history')" id="historyBtn">History</button>
+    <div id="historyBlock" class="history-controls">
+      <button onclick="setView('history')" id="historyBtn">History</button>
 
-    <div id="graphControls">
-      <button id="weightBtn" onclick="setGraphMode('weight')">Weight</button>
-      <button id="volumeBtn" onclick="setGraphMode('volume')">Volume</button>
-
+      <div id="graphControls">
+        <button id="weightBtn" onclick="setGraphMode('weight')">Weight</button>
+        <button id="volumeBtn" onclick="setGraphMode('volume')">Volume</button>
+      </div>
     </div>
   </div>
 </div>
