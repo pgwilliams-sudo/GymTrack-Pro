@@ -983,20 +983,6 @@ function hydrateSessionFromHistory(session) {
 
   return null;
 }
-
-let inputTimer;
-
-function handleAutoAdvance(el) {
-  if (isReadOnly()) return;
-
-  clearTimeout(inputTimer);
-
-  inputTimer = setTimeout(() => {
-    if (el.value) {
-      focusNextField(el);
-    }
-  }, 500);
-}
   
 /* ================= SESSION OPS ================= */
 
@@ -1159,14 +1145,12 @@ const left = document.createElement("div");
   placeholder="kg"
   value="${set.w || ""}"
   ${session.completed || isReadOnly() ? "disabled" : ""}
-  oninput="handleAutoAdvance(this)"
   onblur="updateSet('${session.id}', ${i}, 'w', this.value)">
 
         <input type="number"
   placeholder="reps"
   value="${set.r || ""}"
   ${session.completed || isReadOnly() ? "disabled" : ""}
-  oninput="handleAutoAdvance(this)"
   onblur="updateSet('${session.id}', ${i}, 'r', this.value)">
       </div>
     `;
@@ -1737,14 +1721,18 @@ function focusNextField(currentEl) {
 
   const target = e.target;
   if (!(target instanceof HTMLElement)) return;
-
-  const isField =
-    target.matches("input, select") ||
-    (target.matches("textarea") && !target.disabled);
-
-  if (!isField) return;
+  if (!target.matches("input, select")) return;
   if (target.disabled) return;
   if (isReadOnly()) return;
+
+  e.preventDefault();
+
+  target.blur();
+
+  requestAnimationFrame(() => {
+    focusNextField(target);
+  });
+});
 
   // Let textarea Enter behave normally unless user wants quick move
   if (target.tagName === "TEXTAREA") return;
