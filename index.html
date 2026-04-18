@@ -141,6 +141,9 @@ body {
 .session-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
+  grid-template-areas:
+    "top top top"
+    "left badge right";
   gap: 10px;
   align-items: start;
   width: 100%;
@@ -232,10 +235,6 @@ body {
   color: var(--text);
   line-height: 1.35;
   white-space: pre-wrap;
-}
-
-  .prev-main {
-  margin-top: 44px;
 }
   
 /* ISOLATION (NEW STYLE) */
@@ -336,9 +335,30 @@ textarea{resize:none;width:100%;}
   }
 
   .session-grid {
-    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
-    gap: 8px;
-  }
+  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+  grid-template-areas:
+    "top top top"
+    "left badge right";
+  gap: 8px;
+}
+
+    .session-top {
+  grid-area: top;
+}
+
+.session-left {
+  grid-area: left;
+}
+
+.pb-badge,
+.pb-badge-slot {
+  grid-area: badge;
+}
+
+.prev-main {
+  grid-area: right;
+  margin-top: 0;
+}
 
   .card {
     padding: 10px;
@@ -893,33 +913,36 @@ function buildSessionCard(session, container) {
   card.style.setProperty('--card-accent', liftColors[session.lift] || '#6366f1');
 
   const wrapper = document.createElement("div");
-  wrapper.className = "session-grid";
+wrapper.className = "session-grid";
 
-  /* ================= LEFT ================= */
-  const left = document.createElement("div");
+/* ================= TOP ROW ================= */
+const top = document.createElement("div");
+top.className = "top-row session-top";
 
-  left.innerHTML = `
-    <div class="top-row">
-      <input type="date"
-        value="${session.date || ""}"
-        ${session.completed || isReadOnly() ? "disabled" : ""}
-        onchange="updateDate('${session.id}', this.value)">
+top.innerHTML = `
+  <input type="date"
+    value="${session.date || ""}"
+    ${session.completed || isReadOnly() ? "disabled" : ""}
+    onchange="updateDate('${session.id}', this.value)">
 
-      <select ${session.completed || isReadOnly() ? "disabled" : ""}
-        onchange="updateLift('${session.id}', this.value)">
-        ${LIFTS.map(l =>
-          `<option value="${l}" ${l === session.lift ? "selected" : ""}>${l}</option>`
-        ).join("")}
-      </select>
+  <select ${session.completed || isReadOnly() ? "disabled" : ""}
+    onchange="updateLift('${session.id}', this.value)">
+    ${LIFTS.map(l =>
+      `<option value="${l}" ${l === session.lift ? "selected" : ""}>${l}</option>`
+    ).join("")}
+  </select>
 
-      <select ${session.completed || isReadOnly() ? "disabled" : ""}
-        onchange="updateType('${session.id}', this.value)">
-        ${WEEK_TYPES.map(t =>
-          `<option value="${t}" ${t === session.type ? "selected" : ""}>${t}</option>`
-        ).join("")}
-      </select>
-    </div>
-  `;
+  <select ${session.completed || isReadOnly() ? "disabled" : ""}
+    onchange="updateType('${session.id}', this.value)">
+    ${WEEK_TYPES.map(t =>
+      `<option value="${t}" ${t === session.type ? "selected" : ""}>${t}</option>`
+    ).join("")}
+  </select>
+`;
+
+/* ================= LEFT ================= */
+const left = document.createElement("div");
+left.className = "session-left";
 
   /* SETS */
   session.sets.forEach((set, i) => {
@@ -1096,7 +1119,7 @@ right.className = "prev prev-main";
   }
   
   /* ================= ASSEMBLE ================= */
-  wrapper.append(left, pbSlot, right);
+  wrapper.append(top, left, pbSlot, right);
   card.append(wrapper);
 
   container.appendChild(card);
