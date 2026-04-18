@@ -77,14 +77,9 @@ body {
   margin-top:8px;
 }
 
-  .app-header h2 {
-  margin: 0;
-  font-size: 1.05rem;
-}
-
-.header-top {
+  .header-top {
   display: grid;
-  grid-template-columns: 72px 72px;
+  grid-template-columns: 78px 92px;
   justify-content: space-between;
   align-items: stretch;
   gap: 10px;
@@ -92,23 +87,46 @@ body {
 }
 
 .logo-tile {
-  min-height: 72px;
-  border-radius: 14px;
+  min-height: 78px;
+  min-width: 78px;
+  border-radius: 16px;
   background: var(--primary-soft);
-  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
   padding: 8px;
-  font-weight: 700;
+  overflow: hidden;
+}
+
+.logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .add-session-btn {
-  min-height: 72px;
-  border-radius: 14px;
+  min-height: 78px;
+  border-radius: 16px;
   font-weight: 700;
   line-height: 1.1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: 0 6px 14px rgba(99,102,241,.22);
+}
+
+.add-session-plus {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.add-session-text {
+  font-size: 0.82rem;
+  line-height: 1.1;
+  text-align: center;
 }
 
 .header-week-row {
@@ -210,6 +228,30 @@ body {
   #graphControls button {
     flex: 1 1 auto;
   }
+
+  .header-top {
+  grid-template-columns: 76px 96px;
+}
+
+.logo-tile {
+  min-height: 76px;
+  min-width: 76px;
+}
+
+.add-session-btn {
+  min-height: 76px;
+}
+
+  .header-utility-row button,
+.header-view-row > button,
+.history-controls > button,
+#graphControls button,
+.nav-btn,
+.cycle-select,
+.complete-cycle-btn {
+  min-height: 44px;
+}
+  
 }
 
 /* ===== CARD LAYOUT UPGRADE ===== */
@@ -558,10 +600,13 @@ button[style*="ef4444"] {
 <div class="card app-header">
   <div class="header-top">
     <div class="logo-tile">
-      <h2>GymTrack</h2>
-    </div>
+  <img src="icon.png" alt="GymTrack logo" class="logo-img">
+</div>
 
-    <button class="add-session-btn" onclick="addSession()">Add<br>Session</button>
+    <button class="add-session-btn" onclick="addSession()">
+  <span class="add-session-plus">＋</span>
+  <span class="add-session-text">Add Session</span>
+</button>
   </div>
 
   <div class="header-week-row">
