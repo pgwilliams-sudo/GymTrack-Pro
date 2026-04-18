@@ -342,12 +342,6 @@ textarea{resize:none;width:100%;}
   }
 }
 
-  .card {
-    padding: 10px;
-    padding-left: 12px;
-  }
-}
-
 /* BUTTONS */
 
   .top-row {
@@ -1101,10 +1095,15 @@ right.className = "prev";
   }
   
   /* ================= ASSEMBLE ================= */
-  leftColumn.append(top, left);
+leftColumn.append(top, left);
 wrapper.append(leftColumn, pbSlot, right);
+card.append(wrapper);
 
-  container.appendChild(card);
+requestAnimationFrame(() => {
+  right.style.marginTop = `${top.offsetHeight + 8}px`;
+});
+
+container.appendChild(card);
 
   /* NOTES */
   const notesRow = document.createElement("div");
