@@ -1,6 +1,6 @@
 {
-  "name": "GymTrack",
-  "short_name": "GymTrack",
+  "name": "GymTrack Pro",
+  "short_name": "GymTrack Pro",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f8fafc",
