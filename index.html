@@ -736,6 +736,18 @@ const WEEK_TYPES = ["GVT","Core","Pause","Tempo","Other"];
 
 /* ================= HELPERS ================= */
 
+function flushActiveInput() {
+  const active = document.activeElement;
+  if (!active) return;
+
+  if (
+    active.matches &&
+    active.matches("input, select, textarea")
+  ) {
+    active.blur();
+  }
+}
+  
 function hideHeader() {
   headerHidden = true;
   const header = document.querySelector('.app-header');
@@ -1025,6 +1037,8 @@ function hydrateSessionFromHistory(session) {
 function addSession(){
   if (viewing !== "current") return;
 
+  flushActiveInput();
+
   const newSession = {
     id: crypto.randomUUID(),
     lift: "Squat",
@@ -1101,6 +1115,8 @@ function deleteSession(id){
 }
 
 function completeSession(id){
+  flushActiveInput();
+
   const s = getWeek().find(x => x.id === id);
   if (!s) return;
 
