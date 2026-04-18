@@ -832,11 +832,11 @@ function updateCycleDropdown(){
   const currentType = currentSession.type;
   const weeks = getWeeksForLookup();
 
-  // 1️⃣ Same week, earlier sessions
   const weekSessions = weeks[currentWeek] || [];
   const index = weekSessions.findIndex(s => s.id === currentSession.id);
 
-  for (let i = index - 1; i >= 0; i--) {
+  // Same week, later array items = older sessions
+  for (let i = index + 1; i < weekSessions.length; i++) {
     const s = weekSessions[i];
     if (
       s.completed &&
@@ -847,7 +847,7 @@ function updateCycleDropdown(){
     }
   }
 
-  // 2️⃣ Previous weeks within the ACTIVE cycle being viewed
+  // Previous weeks
   for (let w = currentWeek - 1; w >= 1; w--) {
     const sessions = weeks[w];
     if (!sessions) continue;
@@ -997,11 +997,11 @@ function hydrateSessionFromHistory(session) {
   function getPreviousIsolationSession(currentSession) {
   const weeks = getWeeksForLookup();
 
-  // 1️⃣ Same week, earlier sessions
   const weekSessions = weeks[currentWeek] || [];
   const index = weekSessions.findIndex(s => s.id === currentSession.id);
 
-  for (let i = index - 1; i >= 0; i--) {
+  // Same week, later array items = older sessions
+  for (let i = index + 1; i < weekSessions.length; i++) {
     const s = weekSessions[i];
     if (
       s.completed &&
@@ -1012,7 +1012,7 @@ function hydrateSessionFromHistory(session) {
     }
   }
 
-  // 2️⃣ Previous weeks within the ACTIVE cycle being viewed
+  // Previous weeks
   for (let w = currentWeek - 1; w >= 1; w--) {
     const sessions = weeks[w];
     if (!sessions) continue;
