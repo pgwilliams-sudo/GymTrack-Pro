@@ -1936,17 +1936,21 @@ function updateMainSets(id, v){
   
   let audioCtx = null;
 
-function initAudio(){
+async function initAudio(){
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
 
   if (audioCtx.state === "suspended") {
-    audioCtx.resume();
+    try {
+      await audioCtx.resume();
+    } catch (err) {
+      console.log("Audio resume failed", err);
+    }
   }
 }
   function beep(freq = 800, duration = 150){
-  if (!audioCtx) return;
+  if (!audioCtx || audioCtx.state !== "running") return;
 
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
@@ -1957,12 +1961,12 @@ function initAudio(){
   osc.connect(gain);
   gain.connect(audioCtx.destination);
 
+  gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+
   osc.start();
-
-  gain.gain.setValueAtTime(1, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration/1000);
-
-  osc.stop(audioCtx.currentTime + duration/1000);
+  osc.stop(audioCtx.currentTime + duration / 1000);
 }
   let interval = null;
 
@@ -1974,8 +1978,8 @@ function updateDate(id, value){
   saveDB();
 }
   
-function startTimer(id){
-  initAudio();
+async function startTimer(id){
+  await initAudio();
 
   const s = getWeek().find(x => x.id === id);
   if (!s || s.timerRunning) return;
@@ -1984,6 +1988,9 @@ function startTimer(id){
 
   s.timerRunning = true;
   s.timer = s.timer > 0 ? s.timer : 90;
+
+  saveDB();
+  updateTimerDisplay(id);
 
   interval = setInterval(() => {
     s.timer--;
@@ -2013,8 +2020,7 @@ function startTimer(id){
     }
 
     saveDB();
-
-        updateTimerDisplay(id);
+    updateTimerDisplay(id);
   }, 1000);
 }
 
