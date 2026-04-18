@@ -995,7 +995,7 @@ function handleAutoAdvance(el) {
     if (el.value) {
       focusNextField(el);
     }
-  }, 400); // waits for typing to stop
+  }, 500);
 }
   
 /* ================= SESSION OPS ================= */
@@ -1839,15 +1839,14 @@ function updateSet(id, i, f, v){
   }
 
   saveDB();
-  render();
 }
 
 function updateIso(id, i, f, v){
   const s = getWeek().find(s => s.id === id);
   if (!s || !s.isolations[i]) return;
+
   s.isolations[i][f] = v;
   saveDB();
-  render();
 }
 
 function updateNotes(id, v){
