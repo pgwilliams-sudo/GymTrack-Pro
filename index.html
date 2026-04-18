@@ -734,6 +734,22 @@ function flushActiveInput() {
     active.blur();
   }
 }
+
+function updateTimerDisplay(id){
+  const s = getWeek().find(x => x.id === id);
+  if (!s) return;
+
+  const timerEl = document.querySelector(`[data-timer-id="${id}"]`);
+  const countEl = document.querySelector(`[data-gvt-count-id="${id}"]`);
+
+  if (timerEl) {
+    timerEl.textContent = `${s.timer || 0}s`;
+  }
+
+  if (countEl) {
+    countEl.textContent = `${s.gvtCount || 0}/10`;
+  }
+}
   
 function hideHeader() {
   headerHidden = true;
@@ -1217,14 +1233,14 @@ const left = document.createElement("div");
     timerBox.style.marginTop = "8px";
 
     timerBox.innerHTML = `
-      <strong>GVT Timer</strong><br>
-      <div style="margin-top:6px; font-size:0.9rem;">
-        Time: <strong>${session.timer || 0}s</strong>
-      </div>
-      <div style="margin-top:4px; font-size:0.85rem;">
-        Completed sets: <strong>${session.gvtCount || 0}/10</strong>
-      </div>
-    `;
+  <strong>GVT Timer</strong><br>
+  <div style="margin-top:6px; font-size:0.9rem;">
+    Time: <strong data-timer-id="${session.id}">${session.timer || 0}s</strong>
+  </div>
+  <div style="margin-top:4px; font-size:0.85rem;">
+    Completed sets: <strong data-gvt-count-id="${session.id}">${session.gvtCount || 0}/10</strong>
+  </div>
+`;
 
     if (!session.completed && !isReadOnly()) {
       const timerActions = document.createElement("div");
@@ -1882,6 +1898,11 @@ function updateSet(id, i, f, v){
   }
 
   saveDB();
+
+  // Re-render only for GVT so copied values appear
+  if (s.type === "GVT") {
+    render();
+  }
 }
 
 function updateIso(id, i, f, v){
@@ -1993,9 +2014,7 @@ function startTimer(id){
 
     saveDB();
 
-    if (s.timer % 2 === 0) {
-      render();
-    }
+        updateTimerDisplay(id);
   }, 1000);
 }
 
