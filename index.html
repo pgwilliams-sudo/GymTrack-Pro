@@ -331,15 +331,6 @@ body {
   0% { transform: translateY(0) scale(1); opacity: 1; }
   100% { transform: translateY(40px) scale(0.6); opacity: 0; }
 }
-
-.app-header.compact .logo-badge {
-  top: 4px;
-  right: 4px;
-  font-size: 0.5rem;
-  padding: 2px 5px;
-}
-  
-}
   
 /* MAIN GRID */
 .session-grid {
@@ -1732,14 +1723,6 @@ function focusNextField(currentEl) {
   requestAnimationFrame(() => {
     focusNextField(target);
   });
-});
-
-  // Let textarea Enter behave normally unless user wants quick move
-  if (target.tagName === "TEXTAREA") return;
-
-  e.preventDefault();
-  target.blur();
-  focusNextField(target);
 });
   
 function render(){
