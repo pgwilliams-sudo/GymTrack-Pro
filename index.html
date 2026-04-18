@@ -332,79 +332,6 @@ body {
   100% { transform: translateY(40px) scale(0.6); opacity: 0; }
 }
 
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.app-header.compact {
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-
-.app-header.compact .header-top {
-  grid-template-columns: 60px 78px;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.app-header.compact .logo-tile {
-  min-height: 60px;
-  min-width: 60px;
-  border-radius: 12px;
-}
-
-.app-header.compact .add-session-btn {
-  min-height: 60px;
-  border-radius: 12px;
-  gap: 2px;
-}
-
-.app-header.compact .add-session-plus {
-  font-size: 1.05rem;
-}
-
-.app-header.compact .add-session-text {
-  font-size: 0.72rem;
-}
-
-.app-header.compact .header-week-row,
-.app-header.compact .header-cycle-row,
-.app-header.compact .header-utility-row {
-  margin-bottom: 8px;
-}
-
-.app-header.compact .header-view-row {
-  margin-top: 8px;
-}
-
-@media (max-width: 700px) and (orientation: portrait) {
-  .app-header {
-    top: 0;
-  }
-
-  .app-header.compact .header-top {
-    grid-template-columns: 56px 74px;
-  }
-
-  .app-header.compact .logo-tile {
-    min-height: 56px;
-    min-width: 56px;
-  }
-
-  .app-header.compact .add-session-btn {
-    min-height: 56px;
-  }
-
-  .app-header.compact .header-cycle-row,
-  .app-header.compact .header-utility-row,
-  .app-header.compact .header-view-row {
-    gap: 6px;
-  }
-
 .app-header.compact .logo-badge {
   top: 4px;
   right: 4px;
@@ -1057,6 +984,20 @@ function hydrateSessionFromHistory(session) {
   return null;
 }
 
+let inputTimer;
+
+function handleAutoAdvance(el) {
+  if (isReadOnly()) return;
+
+  clearTimeout(inputTimer);
+
+  inputTimer = setTimeout(() => {
+    if (el.value) {
+      focusNextField(el);
+    }
+  }, 400); // waits for typing to stop
+}
+  
 /* ================= SESSION OPS ================= */
 
 function addSession(){
@@ -1215,16 +1156,18 @@ const left = document.createElement("div");
       <div class="set-row">
         <span>${i + 1}</span>
         <input type="number"
-          placeholder="kg"
-          value="${set.w || ""}"
-          ${session.completed || isReadOnly() ? "disabled" : ""}
-          onblur="updateSet('${session.id}', ${i}, 'w', this.value)">
+  placeholder="kg"
+  value="${set.w || ""}"
+  ${session.completed || isReadOnly() ? "disabled" : ""}
+  oninput="handleAutoAdvance(this)"
+  onblur="updateSet('${session.id}', ${i}, 'w', this.value)">
 
         <input type="number"
-          placeholder="reps"
-          value="${set.r || ""}"
-          ${session.completed || isReadOnly() ? "disabled" : ""}
-          onblur="updateSet('${session.id}', ${i}, 'r', this.value)">
+  placeholder="reps"
+  value="${set.r || ""}"
+  ${session.completed || isReadOnly() ? "disabled" : ""}
+  oninput="handleAutoAdvance(this)"
+  onblur="updateSet('${session.id}', ${i}, 'r', this.value)">
       </div>
     `;
   });
@@ -1810,21 +1753,6 @@ function focusNextField(currentEl) {
   target.blur();
   focusNextField(target);
 });
-
-const appHeader = document.querySelector('.app-header');
-
-function updateHeaderCompactState() {
-  if (!appHeader) return;
-
-  if (window.scrollY > 60) {
-    appHeader.classList.add('compact');
-  } else {
-    appHeader.classList.remove('compact');
-  }
-}
-
-window.addEventListener('scroll', updateHeaderCompactState, { passive: true });
-window.addEventListener('resize', updateHeaderCompactState);
   
 function render(){
   updateCycleDropdown();
@@ -1876,8 +1804,6 @@ if (weightBtn && volumeBtn) {
   } else if (currentView === "history") {
     renderHistory(c);
   }
-
-    updateHeaderCompactState();
   
 }
 
