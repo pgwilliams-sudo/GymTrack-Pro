@@ -777,16 +777,17 @@ function getWeek(){
   return weeks[currentWeek];
 }
 
-function isWeekComplete(weekNum){
+function getWeekStatus(weekNum){
   const weeks = getActiveWeeks();
+  const week = weeks[weekNum];
 
-  for (let w = weekNum + 1; w <= MAX_WEEKS; w++) {
-    if (weeks[w] && weeks[w].length > 0) {
-      return true;
-    }
-  }
+  if (!week || week.length === 0) return "empty";
 
-  return false;
+  const completed = week.filter(s => s.completed).length;
+
+  if (completed === week.length) return "complete";
+  if (completed > 0) return "partial";
+  return "active";
 }
   
   function isReadOnly(){
