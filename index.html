@@ -1266,21 +1266,24 @@ const left = document.createElement("div");
           onblur="updateIso('${session.id}', ${i}, 'name', this.value)">
 
         <div class="iso-row">
-          <input placeholder="Sets"
-            value="${iso.sets || ""}"
-            ${session.completed || isReadOnly() ? "disabled" : ""}
-            onblur="updateIso('${session.id}', ${i}, 'sets', this.value)">
+  <input type="number"
+    placeholder="Sets"
+    value="${iso.sets || ""}"
+    ${session.completed || isReadOnly() ? "disabled" : ""}
+    onblur="updateIso('${session.id}', ${i}, 'sets', this.value)">
 
-          <input placeholder="Reps"
-            value="${iso.reps || ""}"
-            ${session.completed || isReadOnly() ? "disabled" : ""}
-            onblur="updateIso('${session.id}', ${i}, 'reps', this.value)">
+  <input type="number"
+    placeholder="Reps"
+    value="${iso.reps || ""}"
+    ${session.completed || isReadOnly() ? "disabled" : ""}
+    onblur="updateIso('${session.id}', ${i}, 'reps', this.value)">
 
-          <input placeholder="Weight"
-            value="${iso.weight || ""}"
-            ${session.completed || isReadOnly() ? "disabled" : ""}
-            onblur="updateIso('${session.id}', ${i}, 'weight', this.value)">
-        </div>
+  <input type="number"
+    placeholder="Weight"
+    value="${iso.weight || ""}"
+    ${session.completed || isReadOnly() ? "disabled" : ""}
+    onblur="updateIso('${session.id}', ${i}, 'weight', this.value)">
+</div>
       </div>
     `;
   });
