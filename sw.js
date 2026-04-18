@@ -1,53 +1,61 @@
 // sw.js – Service Worker for GymTrack
 
-const CACHE_NAME = 'gymtrack-cache-v1';
+const CACHE_NAME = 'gymtrack-cache-v2';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './icon.png',
+  './icon-192.PNG',
+  './icon-512.PNG',
   './sw.js'
-  // Add any additional JS or CSS files here if you separate them
 ];
 
-// Install event – cache all files
+// Install event – cache core app shell
 self.addEventListener('install', event => {
-  console.log('[Service Worker] Installing...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      console.log('[Service Worker] Caching app shell');
-      return cache.addAll(urlsToCache);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
-  self.skipWaiting(); // Activate SW immediately
+  self.skipWaiting();
 });
 
 // Activate event – clean up old caches
 self.addEventListener('activate', event => {
-  console.log('[Service Worker] Activating...');
   event.waitUntil(
-    caches.keys().then(keyList =>
+    caches.keys().then(keys =>
       Promise.all(
-        keyList.map(key => {
+        keys.map(key => {
           if (key !== CACHE_NAME) {
-            console.log('[Service Worker] Removing old cache', key);
             return caches.delete(key);
           }
         })
       )
     )
   );
-  self.clients.claim(); // Take control immediately
+  self.clients.claim();
 });
 
-// Fetch event – serve cached files when offline
+// Fetch event – cache first, then network
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then(response => {
-      // Return cached response if found, otherwise fetch from network
-      return response || fetch(event.request).catch(() => {
-        // Optionally, you can return a fallback page here
-        // return caches.match('./offline.html');
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+
+      return fetch(event.request).then(response => {
+        // Optionally cache successful same-origin GET requests
+        if (
+          response &&
+          response.status === 200 &&
+          event.request.url.startsWith(self.location.origin)
+        ) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+        }
+
+        return response;
       });
     })
   );
