@@ -1,1 +1,20 @@
-{"format_version":1,"header":{"description":"pack.description","name":"pack.name","uuid":"42fde774-37d4-4422-b374-89ff13a6535a","version":[1,2,1]},"modules":[{"type":"persona_piece","uuid":"e905802b-2227-4f09-8781-3e784d66979f","version":[1,2,1]}]}
+{
+  "name": "GymTrack",
+  "short_name": "GymTrack",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
