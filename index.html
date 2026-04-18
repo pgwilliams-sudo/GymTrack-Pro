@@ -801,6 +801,11 @@ function setGraphMode(mode){
 
   function switchCycle(val){
   viewing = val === "current" ? "current" : Number(val);
+
+  if (viewing !== "current") {
+    showHeader();
+  }
+
   render();
 }
 
@@ -2040,9 +2045,11 @@ function renderWeekButtons(){
     const b = document.createElement("button");
     b.textContent = `W${i}`;
 
+    const status = getWeekStatus(i);
+
     if (i === currentWeek) {
       b.className = "week-btn active";
-    } else if (isWeekComplete(i)) {
+    } else if (status === "complete") {
       b.className = "week-btn completed";
     } else {
       b.className = "week-btn inactive";
@@ -2061,18 +2068,14 @@ function completeCycle(){
   if(!confirm('Complete cycle and start new one?')) return;
 
   const cycleCopy = {
-  weeks: JSON.parse(JSON.stringify(db.weeks))
-};
-  db.weeks = {};        // ✅ reset sessions
-db.cycle = (db.cycle || 1) + 1;  // ✅ increment cycle
+    weeks: JSON.parse(JSON.stringify(db.weeks))
+  };
+  db.weeks = {};
+  db.cycle = (db.cycle || 1) + 1;
 
-  // Save to history
   db.history.push(cycleCopy);
-
-  // 🔥 AUTO DOWNLOAD BACKUP
   downloadBackup(cycleCopy);
 
-  // Reset current
   db.current = {
     lifts:{Squat:[],Bench:[],Deadlift:[]},
     isolations:{Squat:[],Bench:[],Deadlift:[]},
@@ -2081,6 +2084,7 @@ db.cycle = (db.cycle || 1) + 1;  // ✅ increment cycle
 
   viewing = "current";
   currentWeek = 1;
+  showHeader();
 
   saveDB();
   render();
