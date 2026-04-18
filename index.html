@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#3b82f6">
 
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.PNG">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="GymTrack">
@@ -315,6 +315,80 @@ body {
 @keyframes confetti-fall {
   0% { transform: translateY(0) scale(1); opacity: 1; }
   100% { transform: translateY(40px) scale(0.6); opacity: 0; }
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.app-header.compact {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.app-header.compact .header-top {
+  grid-template-columns: 60px 78px;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.app-header.compact .logo-tile {
+  min-height: 60px;
+  min-width: 60px;
+  border-radius: 12px;
+}
+
+.app-header.compact .add-session-btn {
+  min-height: 60px;
+  border-radius: 12px;
+  gap: 2px;
+}
+
+.app-header.compact .add-session-plus {
+  font-size: 1.05rem;
+}
+
+.app-header.compact .add-session-text {
+  font-size: 0.72rem;
+}
+
+.app-header.compact .header-week-row,
+.app-header.compact .header-cycle-row,
+.app-header.compact .header-utility-row {
+  margin-bottom: 8px;
+}
+
+.app-header.compact .header-view-row {
+  margin-top: 8px;
+}
+
+@media (max-width: 700px) and (orientation: portrait) {
+  .app-header {
+    top: 0;
+  }
+
+  .app-header.compact .header-top {
+    grid-template-columns: 56px 74px;
+  }
+
+  .app-header.compact .logo-tile {
+    min-height: 56px;
+    min-width: 56px;
+  }
+
+  .app-header.compact .add-session-btn {
+    min-height: 56px;
+  }
+
+  .app-header.compact .header-cycle-row,
+  .app-header.compact .header-utility-row,
+  .app-header.compact .header-view-row {
+    gap: 6px;
+  }
 }
   
 /* MAIN GRID */
@@ -1712,6 +1786,21 @@ function focusNextField(currentEl) {
   target.blur();
   focusNextField(target);
 });
+
+const appHeader = document.querySelector('.app-header');
+
+function updateHeaderCompactState() {
+  if (!appHeader) return;
+
+  if (window.scrollY > 60) {
+    appHeader.classList.add('compact');
+  } else {
+    appHeader.classList.remove('compact');
+  }
+}
+
+window.addEventListener('scroll', updateHeaderCompactState, { passive: true });
+window.addEventListener('resize', updateHeaderCompactState);
   
 function render(){
   updateCycleDropdown();
@@ -1763,6 +1852,9 @@ if (weightBtn && volumeBtn) {
   } else if (currentView === "history") {
     renderHistory(c);
   }
+
+    updateHeaderCompactState();
+  
 }
 
   
