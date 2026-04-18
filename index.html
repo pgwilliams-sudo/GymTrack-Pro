@@ -141,9 +141,6 @@ body {
 .session-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr);
-  grid-template-areas:
-    "top top top"
-    "left badge right";
   gap: 10px;
   align-items: start;
   width: 100%;
@@ -335,29 +332,14 @@ textarea{resize:none;width:100%;}
   }
 
   .session-grid {
-  grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
-  grid-template-areas:
-    "top top top"
-    "left badge right";
-  gap: 8px;
-}
+    grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr);
+    gap: 8px;
+  }
 
-    .session-top {
-  grid-area: top;
-}
-
-.session-left {
-  grid-area: left;
-}
-
-.pb-badge,
-.pb-badge-slot {
-  grid-area: badge;
-}
-
-.prev-main {
-  grid-area: right;
-  margin-top: 0;
+  .card {
+    padding: 10px;
+    padding-left: 12px;
+  }
 }
 
   .card {
@@ -915,9 +897,11 @@ function buildSessionCard(session, container) {
   const wrapper = document.createElement("div");
 wrapper.className = "session-grid";
 
-/* ================= TOP ROW ================= */
+/* ================= LEFT COLUMN ================= */
+const leftColumn = document.createElement("div");
+
 const top = document.createElement("div");
-top.className = "top-row session-top";
+top.className = "top-row";
 
 top.innerHTML = `
   <input type="date"
@@ -940,9 +924,7 @@ top.innerHTML = `
   </select>
 `;
 
-/* ================= LEFT ================= */
 const left = document.createElement("div");
-left.className = "session-left";
 
   /* SETS */
   session.sets.forEach((set, i) => {
@@ -1069,7 +1051,7 @@ left.className = "session-left";
 
   /* ================= RIGHT ================= */
   const right = document.createElement("div");
-right.className = "prev prev-main";
+right.className = "prev";
 
   right.innerHTML = `
     <strong>Previous session</strong>
@@ -1119,8 +1101,8 @@ right.className = "prev prev-main";
   }
   
   /* ================= ASSEMBLE ================= */
-  wrapper.append(top, left, pbSlot, right);
-  card.append(wrapper);
+  leftColumn.append(top, left);
+wrapper.append(leftColumn, pbSlot, right);
 
   container.appendChild(card);
 
