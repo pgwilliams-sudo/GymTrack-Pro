@@ -684,11 +684,50 @@ button[style*="ef4444"] {
 
 <!-- MAIN -->
 <div id="sessions"></div>
+<script>
+  let wakeLock = null;
 
+  async function requestWakeLock() {
+    try {
+      if (!("wakeLock" in navigator)) return;
+
+      wakeLock = await navigator.wakeLock.request("screen");
+
+      wakeLock.addEventListener("release", () => {
+        wakeLock = null;
+      });
+    } catch (err) {
+      console.log("Wake lock failed:", err);
+    }
+  }
+
+  async function releaseWakeLock() {
+    try {
+      if (wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    } catch (err) {
+      console.log("Wake lock release failed:", err);
+    }
+  }
+
+  document.addEventListener("visibilitychange", async () => {
+    if (
+      document.visibilityState === "visible" &&
+      wakeLock === null &&
+      getWeek().some(s => s.type === "GVT" && s.timerRunning)
+    ) {
+      await requestWakeLock();
+    }
+  });
+</script>
 <script>
   const APP_VERSION = "3.0.0";
 
     let viewing = "current"; // or index of history
+
+  
 /* ================= DATA ================= */
 
 const MAX_WEEKS = 12;
@@ -1109,6 +1148,7 @@ function addSession(){
     s.timerRunning = false;
     s.timer = 0;
     s.gvtCount = 0;
+      releaseWakeLock();
     clearInterval(interval);
   }
 
@@ -1117,6 +1157,13 @@ function addSession(){
 }
   
 function deleteSession(id){
+  const s = getWeek().find(x => x.id === id);
+
+  if (s && s.type === "GVT" && s.timerRunning) {
+    clearInterval(interval);
+    releaseWakeLock();
+  }
+
   const weeks = getActiveWeeks();
   weeks[currentWeek] = getWeek().filter(s => s.id !== id);
   saveDB();
@@ -1128,6 +1175,12 @@ function completeSession(id){
 
   const s = getWeek().find(x => x.id === id);
   if (!s) return;
+
+  if (s.type === "GVT" && s.timerRunning) {
+    clearInterval(interval);
+    s.timerRunning = false;
+    releaseWakeLock();
+  }
 
   s.completed = true;
 
@@ -1987,6 +2040,7 @@ async function startTimer(id){
   clearInterval(interval);
 
   s.timerRunning = true;
+  requestWakeLock();
   s.timer = s.timer > 0 ? s.timer : 90;
 
   saveDB();
@@ -2011,6 +2065,7 @@ async function startTimer(id){
         clearInterval(interval);
         s.timerRunning = false;
         s.timer = 0;
+        releaseWakeLock();
         saveDB();
         render();
         return;
@@ -2034,6 +2089,7 @@ function resetTimer(id){
   s.gvtCount = 0;
 
   saveDB();
+  releaseWakeLock();
   render();
 }
 /* ================= HEADER ================= */
