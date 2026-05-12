@@ -786,12 +786,11 @@ function flushActiveInput() {
 function getTimerRemaining(session){
   if (!session.timerRunning || !session.timerEndTime) return 0;
 
-  const remaining = Math.max(
-    0,
-    Math.ceil((Number(session.timerEndTime) - Date.now()) / 1000)
-  );
+  const end = Number(session.timerEndTime);
 
-  return remaining;
+  if (!Number.isFinite(end)) return 0;
+
+  return Math.max(0, Math.ceil((end - Date.now()) / 1000));
 }
 
 function formatTimer(seconds){
@@ -1159,10 +1158,16 @@ function addSession(){
 s.timerEndTime = s.timerEndTime || null;
 s.timerDuration = Number(s.timerDuration) || 90;
 
+const end = Number(s.timerEndTime);
+
 // Fix old broken timer states from previous app versions
-if (s.timerRunning && !s.timerEndTime) {
+if (
+  s.timerRunning &&
+  (!s.timerEndTime || !Number.isFinite(end) || end <= Date.now())
+) {
   s.timerRunning = false;
   s.timer = 0;
+  s.timerEndTime = null;
 }
 
 s.timerRunning = !!s.timerRunning;
@@ -2120,7 +2125,18 @@ async function startTimer(id){
   await initAudio();
 
   const s = getWeek().find(x => x.id === id);
-  if (!s || s.timerRunning) return;
+if (!s) return;
+
+// Repair old/broken running state
+if (s.timerRunning) {
+  const remaining = getTimerRemaining(s);
+
+  if (remaining > 0) return;
+
+  s.timerRunning = false;
+  s.timer = 0;
+  s.timerEndTime = null;
+}
 
   clearInterval(interval);
 
