@@ -2005,6 +2005,13 @@ function updateLift(id, v){
   const s = getWeek().find(x => x.id === id);
   if (!s) return;
 
+  if (activeTimer?.sessionId === id) {
+    clearInterval(interval);
+    activeTimer = null;
+    localStorage.removeItem("activeTimer");
+    releaseWakeLock();
+  }
+
   if (s.lift !== v) {
     s.lift = v;
     s.isolations = [];
@@ -2178,15 +2185,19 @@ function tickTimer(id){
 }
 
 function resetTimer(id){
-  const s = getWeek().find(x => x.id === id);
-  if (!s) return;
-
   clearInterval(interval);
 
   activeTimer = null;
   localStorage.removeItem("activeTimer");
 
-  s.gvtCount = 0;
+  const s = getWeek().find(x => x.id === id);
+  if (s) {
+    s.gvtCount = 0;
+    s.timerRunning = false;
+    s.timer = 0;
+    s.timerEndTime = null;
+    s.timerDuration = 90;
+  }
 
   saveDB();
   releaseWakeLock();
