@@ -678,8 +678,6 @@ button[style*="ef4444"] {
   </div>
 </div>
 
-  <button onclick="repairAllTimers()">Repair Timers</button>
-
   <div id="showHeaderBtn" class="floating-header-toggle hidden">
   <button onclick="showHeader()">Show Header</button>
 </div>
@@ -718,7 +716,7 @@ button[style*="ef4444"] {
     if (
       document.visibilityState === "visible" &&
       wakeLock === null &&
-      getWeek().some(s => s.type === "GVT" && s.timerRunning)
+      activeTimer
     ) {
       await requestWakeLock();
     }
@@ -786,13 +784,14 @@ function flushActiveInput() {
 }
 
 function getTimerRemaining(session){
-  if (!session.timerRunning || !session.timerEndTime) return 0;
+  if (!activeTimer || activeTimer.sessionId !== session.id) return 0;
 
-  const end = Number(session.timerEndTime);
+  const remaining = Math.max(
+    0,
+    Math.ceil((activeTimer.endTime - Date.now()) / 1000)
+  );
 
-  if (!Number.isFinite(end)) return 0;
-
-  return Math.max(0, Math.ceil((end - Date.now()) / 1000));
+  return remaining;
 }
 
 function formatTimer(seconds){
@@ -1196,13 +1195,11 @@ s.timerRunning = !!s.timerRunning;
   ensureMainSetCount(s);
 
   if (value !== "GVT") {
-    s.timerRunning = false;
-s.timer = 0;
-s.timerEndTime = null;
-s.timerDuration = 90;
+    activeTimer = null;
+localStorage.removeItem("activeTimer");
 s.gvtCount = 0;
-      releaseWakeLock();
-    clearInterval(interval);
+releaseWakeLock();
+clearInterval(interval);
   }
 
   saveDB();
@@ -1229,11 +1226,10 @@ function completeSession(id){
   const s = getWeek().find(x => x.id === id);
   if (!s) return;
 
-  if (s.type === "GVT" && s.timerRunning) {
+  if (s.type === "GVT" && activeTimer?.sessionId === id) {
   clearInterval(interval);
-  s.timerRunning = false;
-  s.timer = 0;
-  s.timerEndTime = null;
+  activeTimer = null;
+  localStorage.removeItem("activeTimer");
   releaseWakeLock();
 }
 
@@ -1341,17 +1337,7 @@ if (session.type === "GVT") {
   timerBox.style.marginTop = "8px";
 
   const remaining = getTimerRemaining(session);
-
-  if (session.timerRunning && remaining <= 0) {
-    session.timerRunning = false;
-    session.timerEndTime = null;
-    session.timer = 0;
-    saveDB();
-
-    if (navigator.vibrate) {
-      navigator.vibrate([200, 100, 200]);
-    }
-  }
+const isThisTimerRunning = activeTimer && activeTimer.sessionId === session.id && remaining > 0;
 
   timerBox.innerHTML = `
     <strong>GVT Timer</strong><br>
@@ -1374,8 +1360,8 @@ if (session.type === "GVT") {
     timerActions.style.marginTop = "8px";
 
     const startBtn = document.createElement("button");
-    startBtn.textContent = remaining > 0 ? "Running..." : "Start Timer";
-    startBtn.disabled = remaining > 0;
+    startBtn.textContent = isThisTimerRunning ? "Running..." : "Start Timer";
+startBtn.disabled = isThisTimerRunning;
     startBtn.onclick = () => startTimer(session.id);
 
     const resetBtn = document.createElement("button");
@@ -1943,12 +1929,12 @@ window.addEventListener("focus", () => {
 });
 
 setInterval(() => {
-  const hasRunningTimer = getWeek().some(s => s.type === "GVT" && s.timerRunning);
+  if (!activeTimer) return;
 
-  if (hasRunningTimer) {
-    getWeek()
-      .filter(s => s.type === "GVT" && s.timerRunning)
-      .forEach(s => updateTimerDisplay(s.id));
+  const s = getWeek().find(x => x.id === activeTimer.sessionId);
+
+  if (s) {
+    updateTimerDisplay(s.id);
   }
 }, 1000);
   
@@ -2114,6 +2100,7 @@ async function initAudio(){
   osc.stop(audioCtx.currentTime + duration / 1000);
 }
   let interval = null;
+let activeTimer = JSON.parse(localStorage.getItem("activeTimer")) || null;
 
 function updateDate(id, value){
   const s = getWeek().find(x => x.id === id);
@@ -2125,21 +2112,17 @@ function updateDate(id, value){
   
 async function startTimer(id){
   const s = getWeek().find(x => x.id === id);
-  if (!s) {
-    alert("Timer error: session not found");
-    return;
-  }
+  if (!s) return;
 
   clearInterval(interval);
 
-  // Always force a fresh timer start
-  s.timerRunning = true;
-  s.timer = 90;
-  s.timerDuration = 90;
-  s.timerEndTime = Date.now() + 90 * 1000;
+  activeTimer = {
+    sessionId: id,
+    endTime: Date.now() + 90 * 1000,
+    duration: 90
+  };
 
-  saveDB();
-  updateTimerDisplay(id);
+  localStorage.setItem("activeTimer", JSON.stringify(activeTimer));
 
   try {
     await initAudio();
@@ -2148,21 +2131,21 @@ async function startTimer(id){
   }
 
   requestWakeLock();
+  updateTimerDisplay(id);
 
   interval = setInterval(() => {
-    tickTimer(id);
-  }, 1000);
+  tickTimer(id);
+}, 1000);
 }
 
-  function tickTimer(id){
+function tickTimer(id){
   const s = getWeek().find(x => x.id === id);
-  if (!s) {
+  if (!s || !activeTimer || activeTimer.sessionId !== id) {
     clearInterval(interval);
     return;
   }
 
   const remaining = getTimerRemaining(s);
-  s.timer = remaining;
 
   if (remaining === 10) {
     beep(600, 100);
@@ -2178,18 +2161,16 @@ async function startTimer(id){
 
     if (s.gvtCount >= 10) {
       clearInterval(interval);
-      s.timerRunning = false;
-      s.timer = 0;
-      s.timerEndTime = null;
-      saveDB();
+      activeTimer = null;
+      localStorage.removeItem("activeTimer");
       releaseWakeLock();
+      saveDB();
       render();
       return;
     }
 
-    s.timer = 90;
-    s.timerDuration = 90;
-    s.timerEndTime = Date.now() + 90 * 1000;
+    activeTimer.endTime = Date.now() + 90 * 1000;
+    localStorage.setItem("activeTimer", JSON.stringify(activeTimer));
   }
 
   saveDB();
@@ -2202,10 +2183,9 @@ function resetTimer(id){
 
   clearInterval(interval);
 
-  s.timerRunning = false;
-  s.timer = 0;
-  s.timerDuration = 90;
-  s.timerEndTime = null;
+  activeTimer = null;
+  localStorage.removeItem("activeTimer");
+
   s.gvtCount = 0;
 
   saveDB();
@@ -2213,7 +2193,10 @@ function resetTimer(id){
   render();
 }
 
-  function repairAllTimers(){
+function repairAllTimers(){
+  activeTimer = null;
+  localStorage.removeItem("activeTimer");
+
   Object.values(db.weeks || {}).forEach(week => {
     week.forEach(s => {
       s.timerRunning = false;
