@@ -678,6 +678,8 @@ button[style*="ef4444"] {
   </div>
 </div>
 
+  <button onclick="repairAllTimers()">Repair Timers</button>
+
   <div id="showHeaderBtn" class="floating-header-toggle hidden">
   <button onclick="showHeader()">Show Header</button>
 </div>
@@ -2122,69 +2124,76 @@ function updateDate(id, value){
 }
   
 async function startTimer(id){
-  await initAudio();
-
   const s = getWeek().find(x => x.id === id);
-if (!s) return;
-
-// Repair old/broken running state
-if (s.timerRunning) {
-  const remaining = getTimerRemaining(s);
-
-  if (remaining > 0) return;
-
-  s.timerRunning = false;
-  s.timer = 0;
-  s.timerEndTime = null;
-}
+  if (!s) {
+    alert("Timer error: session not found");
+    return;
+  }
 
   clearInterval(interval);
 
-  const duration = s.timer > 0 ? s.timer : 90;
-
+  // Always force a fresh timer start
   s.timerRunning = true;
-  s.timerDuration = duration;
-  s.timerEndTime = Date.now() + duration * 1000;
+  s.timer = 90;
+  s.timerDuration = 90;
+  s.timerEndTime = Date.now() + 90 * 1000;
 
-  requestWakeLock();
   saveDB();
   updateTimerDisplay(id);
 
+  try {
+    await initAudio();
+  } catch (err) {
+    console.log("Audio init failed:", err);
+  }
+
+  requestWakeLock();
+
   interval = setInterval(() => {
-    const remaining = Math.max(0, Math.ceil((s.timerEndTime - Date.now()) / 1000));
-    s.timer = remaining;
-
-    if (remaining === 10) {
-      beep(600, 100);
-      setTimeout(() => beep(600, 100), 150);
-    }
-
-    if (remaining === 3) beep(900, 120);
-    if (remaining === 2) beep(900, 120);
-    if (remaining === 1) beep(1400, 250);
-
-    if (remaining <= 0) {
-      s.gvtCount = (s.gvtCount || 0) + 1;
-
-      if (s.gvtCount >= 10) {
-        clearInterval(interval);
-        s.timerRunning = false;
-        s.timer = 0;
-        s.timerEndTime = null;
-        releaseWakeLock();
-        saveDB();
-        render();
-        return;
-      }
-
-      s.timer = 90;
-      s.timerDuration = 90;
-      s.timerEndTime = Date.now() + 90 * 1000;
-    }
-
-    saveDB();
-    updateTimerDisplay(id);
+    tickTimer(id);
   }, 1000);
+}
+
+  function tickTimer(id){
+  const s = getWeek().find(x => x.id === id);
+  if (!s) {
+    clearInterval(interval);
+    return;
+  }
+
+  const remaining = getTimerRemaining(s);
+  s.timer = remaining;
+
+  if (remaining === 10) {
+    beep(600, 100);
+    setTimeout(() => beep(600, 100), 150);
+  }
+
+  if (remaining === 3) beep(900, 120);
+  if (remaining === 2) beep(900, 120);
+  if (remaining === 1) beep(1400, 250);
+
+  if (remaining <= 0) {
+    s.gvtCount = (s.gvtCount || 0) + 1;
+
+    if (s.gvtCount >= 10) {
+      clearInterval(interval);
+      s.timerRunning = false;
+      s.timer = 0;
+      s.timerEndTime = null;
+      saveDB();
+      releaseWakeLock();
+      render();
+      return;
+    }
+
+    s.timer = 90;
+    s.timerDuration = 90;
+    s.timerEndTime = Date.now() + 90 * 1000;
+  }
+
+  saveDB();
+  updateTimerDisplay(id);
 }
 
 function resetTimer(id){
@@ -2203,6 +2212,22 @@ function resetTimer(id){
   releaseWakeLock();
   render();
 }
+
+  function repairAllTimers(){
+  Object.values(db.weeks || {}).forEach(week => {
+    week.forEach(s => {
+      s.timerRunning = false;
+      s.timer = 0;
+      s.timerDuration = 90;
+      s.timerEndTime = null;
+    });
+  });
+
+  saveDB();
+  render();
+  alert("All timers repaired");
+}
+  
 /* ================= HEADER ================= */
 
 function changeWeek(d){
