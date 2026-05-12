@@ -756,7 +756,16 @@ let db = JSON.parse(localStorage.getItem('db')) || {
 };
 
 function saveDB(){
-  localStorage.setItem("db", JSON.stringify(db));
+  const clean = JSON.parse(JSON.stringify(db));
+
+  Object.values(clean.weeks || {}).forEach(week => {
+    week.forEach(session => {
+      delete session._prevMain;
+      delete session._prevIso;
+    });
+  });
+
+  localStorage.setItem("db", JSON.stringify(clean));
 }
 const WEEK_TYPES = ["GVT","Core","Pause","Tempo","Peak","Other"];
 
@@ -1032,8 +1041,15 @@ function hydrateSessionFromHistory(session) {
   const prevMain = getPreviousSession(session);
   const prevIso = getPreviousIsolationSession(session);
 
-  session._prevMain = prevMain || null;
-  session._prevIso = prevIso || null;
+  session._prevMain = prevMain ? {
+  sets: JSON.parse(JSON.stringify(prevMain.sets || [])),
+  notes: prevMain.notes || "",
+  date: prevMain.date || ""
+} : null;
+
+session._prevIso = prevIso ? {
+  isolations: JSON.parse(JSON.stringify(prevIso.isolations || []))
+} : null;
 
   // In history view, never auto-fill or mutate session content
   if (isReadOnly()) return;
