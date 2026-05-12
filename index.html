@@ -774,6 +774,17 @@ function flushActiveInput() {
   }
 }
 
+function getTimerRemaining(session){
+  if(!session.timerRunning || !session.timerEndTime) return 0;
+  return Math.max(0, Math.ceil((session.timerEndTime - Date.now()) / 1000));
+}
+
+function formatTimer(seconds){
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+  
 function updateTimerDisplay(id){
   const s = getWeek().find(x => x.id === id);
   if (!s) return;
@@ -781,8 +792,10 @@ function updateTimerDisplay(id){
   const timerEl = document.querySelector(`[data-timer-id="${id}"]`);
   const countEl = document.querySelector(`[data-gvt-count-id="${id}"]`);
 
+  const remaining = getTimerRemaining(s);
+
   if (timerEl) {
-    timerEl.textContent = `${s.timer || 0}s`;
+    timerEl.textContent = remaining > 0 ? formatTimer(remaining) : "Ready";
   }
 
   if (countEl) {
@@ -1122,6 +1135,8 @@ function addSession(){
   s.gvtCount = Number(s.gvtCount) || 0;
   s.timer = Number(s.timer) || 0;
   s.timerRunning = !!s.timerRunning;
+    s.timerEndTime = s.timerEndTime || null;
+s.timerDuration = Number(s.timerDuration) || 90;
 
   if (!s.date) {
     s.date = new Date().toISOString().split("T")[0];
@@ -1146,8 +1161,10 @@ function addSession(){
 
   if (value !== "GVT") {
     s.timerRunning = false;
-    s.timer = 0;
-    s.gvtCount = 0;
+s.timer = 0;
+s.timerEndTime = null;
+s.timerDuration = 90;
+s.gvtCount = 0;
       releaseWakeLock();
     clearInterval(interval);
   }
@@ -1177,10 +1194,12 @@ function completeSession(id){
   if (!s) return;
 
   if (s.type === "GVT" && s.timerRunning) {
-    clearInterval(interval);
-    s.timerRunning = false;
-    releaseWakeLock();
-  }
+  clearInterval(interval);
+  s.timerRunning = false;
+  s.timer = 0;
+  s.timerEndTime = null;
+  releaseWakeLock();
+}
 
   s.completed = true;
 
@@ -1280,42 +1299,59 @@ const left = document.createElement("div");
   });
 
   /* GVT TIMER */
-  if (session.type === "GVT") {
-    const timerBox = document.createElement("div");
-    timerBox.className = "prev";
-    timerBox.style.marginTop = "8px";
+if (session.type === "GVT") {
+  const timerBox = document.createElement("div");
+  timerBox.className = "prev";
+  timerBox.style.marginTop = "8px";
 
-    timerBox.innerHTML = `
-  <strong>GVT Timer</strong><br>
-  <div style="margin-top:6px; font-size:0.9rem;">
-    Time: <strong data-timer-id="${session.id}">${session.timer || 0}s</strong>
-  </div>
-  <div style="margin-top:4px; font-size:0.85rem;">
-    Completed sets: <strong data-gvt-count-id="${session.id}">${session.gvtCount || 0}/10</strong>
-  </div>
-`;
+  const remaining = getTimerRemaining(session);
 
-    if (!session.completed && !isReadOnly()) {
-      const timerActions = document.createElement("div");
-      timerActions.style.display = "flex";
-      timerActions.style.gap = "6px";
-      timerActions.style.marginTop = "8px";
+  if (session.timerRunning && remaining <= 0) {
+    session.timerRunning = false;
+    session.timerEndTime = null;
+    session.timer = 0;
+    saveDB();
 
-      const startBtn = document.createElement("button");
-      startBtn.textContent = session.timerRunning ? "Running..." : "Start Timer";
-      startBtn.disabled = session.timerRunning;
-      startBtn.onclick = () => startTimer(session.id);
-
-      const resetBtn = document.createElement("button");
-      resetBtn.textContent = "Reset Timer";
-      resetBtn.onclick = () => resetTimer(session.id);
-
-      timerActions.append(startBtn, resetBtn);
-      timerBox.appendChild(timerActions);
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 100, 200]);
     }
-
-    left.appendChild(timerBox);
   }
+
+  timerBox.innerHTML = `
+    <strong>GVT Timer</strong><br>
+    <div style="margin-top:6px; font-size:0.9rem;">
+      Time: <strong data-timer-id="${session.id}">
+        ${remaining > 0 ? formatTimer(remaining) : "Ready"}
+      </strong>
+    </div>
+    <div style="margin-top:4px; font-size:0.85rem;">
+      Completed sets: <strong data-gvt-count-id="${session.id}">
+        ${session.gvtCount || 0}/10
+      </strong>
+    </div>
+  `;
+
+  if (!session.completed && !isReadOnly()) {
+    const timerActions = document.createElement("div");
+    timerActions.style.display = "flex";
+    timerActions.style.gap = "6px";
+    timerActions.style.marginTop = "8px";
+
+    const startBtn = document.createElement("button");
+    startBtn.textContent = remaining > 0 ? "Running..." : "Start Timer";
+    startBtn.disabled = remaining > 0;
+    startBtn.onclick = () => startTimer(session.id);
+
+    const resetBtn = document.createElement("button");
+    resetBtn.textContent = "Reset Timer";
+    resetBtn.onclick = () => resetTimer(session.id);
+
+    timerActions.append(startBtn, resetBtn);
+    timerBox.appendChild(timerActions);
+  }
+
+  left.appendChild(timerBox);
+}
   
   /* ISOLATIONS */
   session.isolations.forEach((iso, i) => {
@@ -1859,6 +1895,26 @@ function focusNextField(currentEl) {
     focusNextField(target);
   });
 });
+
+  document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    render();
+  }
+});
+
+window.addEventListener("focus", () => {
+  render();
+});
+
+setInterval(() => {
+  const hasRunningTimer = getWeek().some(s => s.type === "GVT" && s.timerRunning);
+
+  if (hasRunningTimer) {
+    getWeek()
+      .filter(s => s.type === "GVT" && s.timerRunning)
+      .forEach(s => updateTimerDisplay(s.id));
+  }
+}, 1000);
   
 function render(){
   updateCycleDropdown();
@@ -2039,32 +2095,37 @@ async function startTimer(id){
 
   clearInterval(interval);
 
-  s.timerRunning = true;
-  requestWakeLock();
-  s.timer = s.timer > 0 ? s.timer : 90;
+  const duration = s.timer > 0 ? s.timer : 90;
 
+  s.timerRunning = true;
+  s.timerDuration = duration;
+  s.timerEndTime = Date.now() + duration * 1000;
+
+  requestWakeLock();
   saveDB();
   updateTimerDisplay(id);
 
   interval = setInterval(() => {
-    s.timer--;
+    const remaining = Math.max(0, Math.ceil((s.timerEndTime - Date.now()) / 1000));
+    s.timer = remaining;
 
-    if (s.timer === 10) {
+    if (remaining === 10) {
       beep(600, 100);
       setTimeout(() => beep(600, 100), 150);
     }
 
-    if (s.timer === 3) beep(900, 120);
-    if (s.timer === 2) beep(900, 120);
-    if (s.timer === 1) beep(1400, 250);
+    if (remaining === 3) beep(900, 120);
+    if (remaining === 2) beep(900, 120);
+    if (remaining === 1) beep(1400, 250);
 
-    if (s.timer <= 0) {
+    if (remaining <= 0) {
       s.gvtCount = (s.gvtCount || 0) + 1;
 
       if (s.gvtCount >= 10) {
         clearInterval(interval);
         s.timerRunning = false;
         s.timer = 0;
+        s.timerEndTime = null;
         releaseWakeLock();
         saveDB();
         render();
@@ -2072,6 +2133,8 @@ async function startTimer(id){
       }
 
       s.timer = 90;
+      s.timerDuration = 90;
+      s.timerEndTime = Date.now() + 90 * 1000;
     }
 
     saveDB();
@@ -2084,8 +2147,11 @@ function resetTimer(id){
   if (!s) return;
 
   clearInterval(interval);
+
   s.timerRunning = false;
   s.timer = 0;
+  s.timerDuration = 90;
+  s.timerEndTime = null;
   s.gvtCount = 0;
 
   saveDB();
