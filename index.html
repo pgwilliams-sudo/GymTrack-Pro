@@ -775,8 +775,14 @@ function flushActiveInput() {
 }
 
 function getTimerRemaining(session){
-  if(!session.timerRunning || !session.timerEndTime) return 0;
-  return Math.max(0, Math.ceil((session.timerEndTime - Date.now()) / 1000));
+  if (!session.timerRunning || !session.timerEndTime) return 0;
+
+  const remaining = Math.max(
+    0,
+    Math.ceil((Number(session.timerEndTime) - Date.now()) / 1000)
+  );
+
+  return remaining;
 }
 
 function formatTimer(seconds){
@@ -1134,9 +1140,16 @@ function addSession(){
   s.mainSets = s.mainSets || "";
   s.gvtCount = Number(s.gvtCount) || 0;
   s.timer = Number(s.timer) || 0;
-  s.timerRunning = !!s.timerRunning;
-    s.timerEndTime = s.timerEndTime || null;
+s.timerEndTime = s.timerEndTime || null;
 s.timerDuration = Number(s.timerDuration) || 90;
+
+// Fix old broken timer states from previous app versions
+if (s.timerRunning && !s.timerEndTime) {
+  s.timerRunning = false;
+  s.timer = 0;
+}
+
+s.timerRunning = !!s.timerRunning;
 
   if (!s.date) {
     s.date = new Date().toISOString().split("T")[0];
