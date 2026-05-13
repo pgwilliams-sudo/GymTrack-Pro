@@ -2227,7 +2227,6 @@ function completeCycle(){
   db.cycle = (db.cycle || 1) + 1;
 
   db.history.push(cycleCopy);
-  downloadBackup(cycleCopy);
 
   db.current = {
     lifts:{Squat:[],Bench:[],Deadlift:[]},
