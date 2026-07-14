@@ -768,16 +768,24 @@ function setView(view){
   
 const LIFTS = ["Squat","Bench","Deadlift","Row","Overhead Press","Open"];
 
-let db = JSON.parse(localStorage.getItem('db')) || {
+let db = JSON.parse(localStorage.getItem("db")) || {
   cycle: 1,
-  weeks: {},   
-  current:{
-    lifts:{Squat:[],Bench:[],Deadlift:[]},
-    isolations:{Squat:[],Bench:[],Deadlift:[]},
-    pbs:{Squat:0,Bench:0,Deadlift:0}
-  },
-  history:[]
+  weeks: {},
+  history: []
 };
+
+// Upgrade or repair existing saved data without deleting it
+if (!Number.isFinite(Number(db.cycle))) {
+  db.cycle = 1;
+}
+
+if (!db.weeks || typeof db.weeks !== "object" || Array.isArray(db.weeks)) {
+  db.weeks = {};
+}
+
+if (!Array.isArray(db.history)) {
+  db.history = [];
+}
 
 function saveDB(){
   const clean = JSON.parse(JSON.stringify(db));
@@ -903,63 +911,123 @@ function setGraphMode(mode){
   render();
 }
 
-  function getActiveWeeks(){
+  function getActiveWeeks() {
   if (viewing === "current") {
-    return db.weeks;
+    return db.weeks || {};
   }
 
-  const cycle = db.history[viewing];
-  return cycle ? cycle.weeks : {};
+  const cycle = db.history?.[viewing];
+
+  return cycle
+    ? normaliseArchivedWeeks(cycle.weeks)
+    : {};
 }
 
 function getWeeksForLookup(){
   return getActiveWeeks();
 }
 
-function updateCycleDropdown(){
-  const sel = document.getElementById('cycleSelect');
-  sel.innerHTML = '<option value="current">Current Cycle</option>';
+function updateCycleDropdown() {
+  const select = document.getElementById("cycleSelect");
 
-  db.history.forEach((_, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = `Cycle ${i+1}`;
-    sel.appendChild(opt);
+  select.innerHTML =
+    `<option value="current">Current Cycle ${db.cycle || 1}</option>`;
+
+  db.history.forEach((cycle, index) => {
+    const option = document.createElement("option");
+
+    option.value = index;
+    option.textContent = `Cycle ${cycle.cycle || index + 1}`;
+
+    select.appendChild(option);
   });
+}
+
+function normaliseArchivedWeeks(value) {
+  if (!value) return {};
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      console.warn("Could not parse archived cycle weeks:", error);
+      return {};
+    }
+  }
+
+  return typeof value === "object" ? value : {};
 }
   
   function getPreviousSession(currentSession) {
   const currentType = currentSession.type;
-  const weeks = getWeeksForLookup();
+  const currentLift = currentSession.lift;
 
-  const weekSessions = weeks[currentWeek] || [];
-  const index = weekSessions.findIndex(s => s.id === currentSession.id);
+  /*
+   * 1. Search earlier sessions in the same week.
+   *
+   * New sessions are inserted using unshift(), so entries after the
+   * current session in the array are older.
+   */
+  const currentWeekSessions = db.weeks?.[currentWeek] || [];
+  const currentIndex = currentWeekSessions.findIndex(
+    session => session.id === currentSession.id
+  );
 
-  // Same week, later array items = older sessions
-  for (let i = index + 1; i < weekSessions.length; i++) {
-    const s = weekSessions[i];
-    if (
-      s.completed &&
-      s.lift === currentSession.lift &&
-      s.type === currentType
-    ) {
-      return s;
+  if (currentIndex !== -1) {
+    for (let i = currentIndex + 1; i < currentWeekSessions.length; i++) {
+      const session = currentWeekSessions[i];
+
+      if (
+        session.completed &&
+        session.lift === currentLift &&
+        session.type === currentType
+      ) {
+        return session;
+      }
     }
   }
 
-  // Previous weeks
-  for (let w = currentWeek - 1; w >= 1; w--) {
-    const sessions = weeks[w];
-    if (!sessions) continue;
+  /*
+   * 2. Search previous weeks in the current cycle.
+   */
+  for (let week = currentWeek - 1; week >= 1; week--) {
+    const sessions = db.weeks?.[week] || [];
 
-    for (let i = sessions.length - 1; i >= 0; i--) {
-      const s = sessions[i];
+    for (let i = 0; i < sessions.length; i++) {
+      const session = sessions[i];
+
       if (
-        s.completed &&
-        s.lift === currentSession.lift &&
-        s.type === currentType
+        session.completed &&
+        session.lift === currentLift &&
+        session.type === currentType
       ) {
-        return s;
+        return session;
+      }
+    }
+  }
+
+  /*
+   * 3. Search completed cycles, newest cycle first.
+   */
+  for (let cycleIndex = db.history.length - 1; cycleIndex >= 0; cycleIndex--) {
+    const cycleWeeks = normaliseArchivedWeeks(
+      db.history[cycleIndex]?.weeks
+    );
+
+    for (let week = MAX_WEEKS; week >= 1; week--) {
+      const sessions = cycleWeeks?.[week] || [];
+
+      for (let i = 0; i < sessions.length; i++) {
+        const session = sessions[i];
+
+        if (
+          session.completed &&
+          session.lift === currentLift &&
+          session.type === currentType
+        ) {
+          return session;
+        }
       }
     }
   }
@@ -1102,36 +1170,70 @@ session._prevIso = prevIso ? {
 }
   
   function getPreviousIsolationSession(currentSession) {
-  const weeks = getWeeksForLookup();
+  const currentLift = currentSession.lift;
 
-  const weekSessions = weeks[currentWeek] || [];
-  const index = weekSessions.findIndex(s => s.id === currentSession.id);
+  /*
+   * 1. Search older sessions in the same current-cycle week.
+   */
+  const currentWeekSessions = db.weeks?.[currentWeek] || [];
+  const currentIndex = currentWeekSessions.findIndex(
+    session => session.id === currentSession.id
+  );
 
-  // Same week, later array items = older sessions
-  for (let i = index + 1; i < weekSessions.length; i++) {
-    const s = weekSessions[i];
-    if (
-      s.completed &&
-      s.lift === currentSession.lift &&
-      s.isolations?.some(i => i.name)
-    ) {
-      return s;
+  if (currentIndex !== -1) {
+    for (let i = currentIndex + 1; i < currentWeekSessions.length; i++) {
+      const session = currentWeekSessions[i];
+
+      if (
+        session.completed &&
+        session.lift === currentLift &&
+        session.isolations?.some(isolation => isolation.name)
+      ) {
+        return session;
+      }
     }
   }
 
-  // Previous weeks
-  for (let w = currentWeek - 1; w >= 1; w--) {
-    const sessions = weeks[w];
-    if (!sessions) continue;
+  /*
+   * 2. Search previous weeks in the current cycle.
+   */
+  for (let week = currentWeek - 1; week >= 1; week--) {
+    const sessions = db.weeks?.[week] || [];
 
-    for (let i = sessions.length - 1; i >= 0; i--) {
-      const s = sessions[i];
+    for (let i = 0; i < sessions.length; i++) {
+      const session = sessions[i];
+
       if (
-        s.completed &&
-        s.lift === currentSession.lift &&
-        s.isolations?.some(i => i.name)
+        session.completed &&
+        session.lift === currentLift &&
+        session.isolations?.some(isolation => isolation.name)
       ) {
-        return s;
+        return session;
+      }
+    }
+  }
+
+  /*
+   * 3. Search previous cycles, newest first.
+   */
+  for (let cycleIndex = db.history.length - 1; cycleIndex >= 0; cycleIndex--) {
+    const cycleWeeks = normaliseArchivedWeeks(
+      db.history[cycleIndex]?.weeks
+    );
+
+    for (let week = MAX_WEEKS; week >= 1; week--) {
+      const sessions = cycleWeeks?.[week] || [];
+
+      for (let i = 0; i < sessions.length; i++) {
+        const session = sessions[i];
+
+        if (
+          session.completed &&
+          session.lift === currentLift &&
+          session.isolations?.some(isolation => isolation.name)
+        ) {
+          return session;
+        }
       }
     }
   }
@@ -1914,10 +2016,12 @@ function render(){
   document.getElementById("weekTitle").textContent = `Week ${currentWeek}`;
   renderWeekButtons();
     
-  document.getElementById("cycleNumber").textContent =
+  const displayedCycle =
   viewing === "current"
     ? db.cycle
-    : `History ${Number(viewing) + 1}`;
+    : db.history?.[Number(viewing)]?.cycle || Number(viewing) + 1;
+
+document.getElementById("cycleNumber").textContent = displayedCycle;
 
   const graphControls = document.getElementById("graphControls");
 const weightBtn = document.getElementById("weightBtn");
@@ -2217,25 +2321,36 @@ function renderWeekButtons(){
   }
 }
 
-function completeCycle(){
-  if(!confirm('Complete cycle and start new one?')) return;
+function completeCycle() {
+  flushActiveInput();
+
+  if (!confirm("Complete cycle and start a new one?")) return;
+
+  const hasSessions = Object.values(db.weeks || {}).some(
+    week => Array.isArray(week) && week.length > 0
+  );
+
+  if (!hasSessions) {
+    alert("There are no sessions in the current cycle.");
+    return;
+  }
 
   const cycleCopy = {
-    weeks: JSON.parse(JSON.stringify(db.weeks))
+    cycle: db.cycle || 1,
+    completedAt: new Date().toISOString(),
+    weeks: JSON.parse(JSON.stringify(db.weeks || {}))
   };
-  db.weeks = {};
-  db.cycle = (db.cycle || 1) + 1;
 
   db.history.push(cycleCopy);
 
-  db.current = {
-    lifts:{Squat:[],Bench:[],Deadlift:[]},
-    isolations:{Squat:[],Bench:[],Deadlift:[]},
-    pbs:{Squat:0,Bench:0,Deadlift:0}
-  };
+  db.weeks = {};
+  db.cycle = (Number(db.cycle) || 1) + 1;
 
   viewing = "current";
   currentWeek = 1;
+  currentView = "main";
+
+  resetGlobalTimer();
   showHeader();
 
   saveDB();
